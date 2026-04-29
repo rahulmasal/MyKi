@@ -232,7 +232,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/myki-password-manager/myki.git
+git clone https://github.com/rahulmasal/MyKi.git
 cd myki/myki_app
 
 # Install dependencies
@@ -385,7 +385,7 @@ Built with ❤️ and a lot of ☕ by the open source community.
 
 - 📘 [Documentation](https://docs.myki.app)
 - 💬 [Discord Community](https://discord.gg/myki)
-- 🐛 [Issue Tracker](https://github.com/myki-password-manager/myki/issues)
+- 🐛 [Issue Tracker](https://github.com/rahulmasal/MyKi/issues)
 - 📖 [Contributing Guide](CONTRIBUTING.md)
 
 ---
@@ -396,4 +396,6 @@ Built with ❤️ and a lot of ☕ by the open source community.
   <sub>Myki - The Password Manager That Never Forgets</sub>
   <br>
   <sub>Made with ❤️ for the open source community</sub>
+</p>
+ub>
 </p>
