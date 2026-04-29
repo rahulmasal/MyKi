@@ -24,25 +24,35 @@ impl Aes256Gcm {
     
     /// Encrypt data
     pub fn encrypt(&self, plaintext: &[u8], aad: Option<&[u8]>) -> Result<EncryptedData, CryptoError> {
-        // Generate random nonce (12 bytes for GCM)
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
-        
-        // Encrypt
+
+        let payload = if let Some(aad_data) = aad {
+            aes_gcm::aead::Payload { msg: plaintext, aad: aad_data }
+        } else {
+            aes_gcm::aead::Payload { msg: plaintext, aad: &[] }
+        };
+
         let ciphertext = self.cipher
-            .encrypt(nonce, aad.unwrap_or(plaintext))
+            .encrypt(nonce, payload)
             .map_err(|e| CryptoError::Encryption(e.to_string()))?;
-        
+
         Ok(EncryptedData::new(nonce_bytes.to_vec(), ciphertext))
     }
     
     /// Decrypt data
     pub fn decrypt(&self, encrypted: &EncryptedData, aad: Option<&[u8]>) -> Result<Vec<u8>, CryptoError> {
         let nonce = Nonce::from_slice(&encrypted.nonce);
-        
+
+        let payload = if let Some(aad_data) = aad {
+            aes_gcm::aead::Payload { msg: &encrypted.ciphertext, aad: aad_data }
+        } else {
+            aes_gcm::aead::Payload { msg: &encrypted.ciphertext, aad: &[] }
+        };
+
         self.cipher
-            .decrypt(nonce, aad.unwrap_or(&encrypted.ciphertext))
+            .decrypt(nonce, payload)
             .map_err(|e| CryptoError::Decryption(e.to_string()))
     }
 }

@@ -282,7 +282,7 @@ class _VaultPageState extends State<VaultPage> {
                 width: 48,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.slate.shade200,
+                  color: Colors.blueGrey.shade200,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -305,7 +305,7 @@ class _VaultPageState extends State<VaultPage> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        side: BorderSide(color: Colors.slate.shade200),
+                        side: BorderSide(color: Colors.blueGrey.shade200),
                       ),
                       child: Text('Cancel', style: TextStyle(color: MykiAppTheme.textPrimary)),
                     ),

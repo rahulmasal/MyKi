@@ -206,7 +206,7 @@ class _UnlockPageState extends State<UnlockPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.slate.shade200),
+                                      border: Border.all(color: Colors.blueGrey.shade200),
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Row(

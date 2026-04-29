@@ -22,7 +22,7 @@ class CredentialTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: MykiAppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.slate.shade200, width: 1),
+        border: Border.all(color: Colors.blueGrey.shade200, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),

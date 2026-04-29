@@ -41,8 +41,11 @@ dependencies:
   mobile_scanner: ^5.2.3
 
   # Networking (for P2P sync)
-  dart_webrtc: ^1.8.1
+  flutter_webrtc: ^0.12.4
   web_socket_channel: ^2.0.0
+
+  # TOTP
+  otp: ^3.1.4
 
 dev_dependencies:
   flutter_test:

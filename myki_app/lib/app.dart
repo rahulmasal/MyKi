@@ -16,7 +16,6 @@ class MykiApp extends StatelessWidget {
       title: 'Myki',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       home: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {

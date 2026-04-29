@@ -43,11 +43,6 @@ impl Default for KdfConfig {
 
 /// Derive a master key from a password using Argon2id
 pub fn derive_key(password: &str, salt: &[u8], config: &Argon2Config) -> Result<MasterKey, CryptoError> {
-    // Convert salt to SaltString
-    let salt_b64 = base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        salt
-    );
     let salt_string = SaltString::encode_b64(salt)
         .map_err(|e| CryptoError::KeyDerivation(e.to_string()))?;
     

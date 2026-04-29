@@ -124,11 +124,11 @@ class AppTheme {
         labelStyle: GoogleFonts.inter(color: MykiAppTheme.textSecondary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.slate.shade200, width: 1),
+          borderSide: BorderSide(color: Colors.blueGrey.shade200, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.slate.shade200, width: 1),
+          borderSide: BorderSide(color: Colors.blueGrey.shade200, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -147,7 +147,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.slate.shade200, width: 1),
+          side: BorderSide(color: Colors.blueGrey.shade200, width: 1),
         ),
         color: MykiAppTheme.surfaceColor,
         clipBehavior: Clip.antiAlias,

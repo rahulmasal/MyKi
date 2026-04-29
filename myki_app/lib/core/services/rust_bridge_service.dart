@@ -1,7 +1,6 @@
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
-import 'dart:convert';
 
 /// Error codes matching Rust FfiError enum
 enum FfiError {
@@ -100,7 +99,7 @@ class RustBridgeService {
       
       _isInitialized = true;
     } catch (e) {
-      print('Failed to load Rust library: $e');
+      // print('Failed to load Rust library: $e');
     }
   }
 

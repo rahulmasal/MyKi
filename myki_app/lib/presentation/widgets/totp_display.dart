@@ -114,7 +114,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
         color: MykiAppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: _copied ? MykiAppTheme.successColor : Colors.slate.shade200, 
+          color: _copied ? MykiAppTheme.successColor : Colors.blueGrey.shade200, 
           width: _copied ? 2 : 1,
         ),
         boxShadow: [
@@ -152,7 +152,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
                             return CircularProgressIndicator(
                               value: value,
                               strokeWidth: 4,
-                              backgroundColor: Colors.slate.shade100,
+                              backgroundColor: Colors.blueGrey.shade100,
                               valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                               strokeCap: StrokeCap.round,
                             );
@@ -223,7 +223,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
                   decoration: BoxDecoration(
                     color: _copied
                         ? MykiAppTheme.successColor.withValues(alpha: 0.15)
-                        : Colors.slate.shade50,
+                        : Colors.blueGrey.shade50,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
@@ -309,7 +309,7 @@ class _TotpDisplayCompactState extends State<TotpDisplayCompact> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.slate.shade100,
+        color: Colors.blueGrey.shade100,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

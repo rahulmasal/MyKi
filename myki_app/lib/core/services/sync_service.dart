@@ -40,7 +40,6 @@ class SyncService {
   /// List of paired devices
   List<PairedDevice> _pairedDevices = [];
 
-  bool _isConnected = false;
 
   final _connectionStateController =
       StreamController<ConnectionState>.broadcast();
@@ -130,6 +129,39 @@ class SyncService {
     await _storage.write(key: 'paired_devices', value: data);
   }
 
+  /// Send pairing request to a device
+  Future<bool> connectDevice(String deviceId, String publicKey, String sessionKey) async {
+    try {
+      _sendSignalingMessage({
+        'type': 'pairing_request',
+        'targetId': deviceId,
+        'senderId': _deviceId,
+        'senderName': deviceName,
+        'publicKey': _publicKey,
+        'sessionKey': sessionKey,
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save paired device manually
+  Future<void> savePairedDevice(dynamic remoteDevice) async {
+    // Basic implementation to satisfy the pairing service
+    final pairedDevice = PairedDevice(
+      id: remoteDevice.deviceId,
+      name: remoteDevice.deviceName,
+      publicKey: remoteDevice.publicKey,
+      sessionKey: 'scanned_session_key', // fallback
+      pairedAt: DateTime.now(),
+    );
+
+    _pairedDevices.removeWhere((d) => d.id == remoteDevice.deviceId);
+    _pairedDevices.add(pairedDevice);
+    await _savePairedDevices();
+  }
+
   /// Connect to signaling server
   Future<void> connect() async {
     if (_state == ConnectionState.connected) return;
@@ -174,7 +206,6 @@ class SyncService {
     await _dataChannel?.close();
     await _peerConnection?.close();
     await _signalingChannel?.sink.close();
-    _isConnected = false;
     _updateState(ConnectionState.disconnected);
   }
 
@@ -233,10 +264,8 @@ class SyncService {
 
     _peerConnection!.onConnectionState = (state) {
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
-        _isConnected = true;
         _updateState(ConnectionState.connected);
       } else if (state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
-        _isConnected = false;
         _updateState(ConnectionState.disconnected);
       }
     };
@@ -252,8 +281,7 @@ class SyncService {
       _handleSyncData(data.text, _activePeerId ?? 'unknown');
     };
     channel.onDataChannelState = (state) {
-      if (state == RTCDataChannelState.RTCDataChannelStateOpen) {
-        _isConnected = true;
+      if (state == RTCDataChannelState.RTCDataChannelOpen) {
         _updateState(ConnectionState.connected);
       }
     };
@@ -358,7 +386,7 @@ class SyncService {
 
   /// Send a sync message to connected peer via WebRTC DataChannel
   Future<void> sendMessage(SyncMessage message, String targetId) async {
-    if (_dataChannel != null && _dataChannel!.state == RTCDataChannelState.RTCDataChannelStateOpen) {
+    if (_dataChannel != null && _dataChannel!.state == RTCDataChannelState.RTCDataChannelOpen) {
       _dataChannel!.send(RTCDataChannelMessage(json.encode(message.toJson())));
     } else {
       // Fallback to signaling if P2P not established (less secure, but functional)

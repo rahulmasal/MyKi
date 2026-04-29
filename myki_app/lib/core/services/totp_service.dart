@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:otp/otp.dart';
 import 'rust_bridge_service.dart';
 

@@ -48,7 +48,7 @@ pub extern "C" fn myki_derive_key(
     
     match derive_key(password_str, &salt_bytes, &config) {
         Ok(master_key) => {
-            let key_bytes = master_key.vault_key().as_bytes();
+            let key_bytes = master_key.vault_key.as_bytes();
             let key_b64 = base64::engine::general_purpose::STANDARD.encode(key_bytes);
             let c_key = CString::new(key_b64).unwrap();
             unsafe {
@@ -96,8 +96,9 @@ pub extern "C" fn myki_encrypt(
     let mut key_array = [0u8; 32];
     key_array.copy_from_slice(&key_bytes);
     let vault_key = VaultKey::from_bytes(key_array);
+    let cipher = Aes256Gcm::new(&vault_key);
 
-    match Aes256Gcm::encrypt(plaintext_str.as_bytes(), &vault_key) {
+    match cipher.encrypt(plaintext_str.as_bytes(), None) {
         Ok(data) => {
             let encoded = data.to_base64();
             let c_str = CString::new(encoded).unwrap();
@@ -146,13 +147,14 @@ pub extern "C" fn myki_decrypt(
     let mut key_array = [0u8; 32];
     key_array.copy_from_slice(&key_bytes);
     let vault_key = VaultKey::from_bytes(key_array);
+    let cipher = Aes256Gcm::new(&vault_key);
 
     let encrypted_data = match crate::crypto::EncryptedData::from_base64(encrypted_str) {
         Ok(d) => d,
         Err(_) => return FfiError::DecryptionFailed,
     };
 
-    match Aes256Gcm::decrypt(&encrypted_data, &vault_key) {
+    match cipher.decrypt(&encrypted_data, None) {
         Ok(plaintext_bytes) => {
             match String::from_utf8(plaintext_bytes) {
                 Ok(s) => {
