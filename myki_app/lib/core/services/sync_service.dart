@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// P2P Sync Service for encrypted vault synchronization
-/// Uses WebSocket for relay-based sync when direct P2P isn't possible
+/// Uses WebRTC for true P2P data transfer with WebSocket signaling
 class SyncService {
   static const String _signalingServerUrl = 'wss://signaling.myki.local';
   static const String defaultRelayServer = 'wss://relay.myki.local';
@@ -17,6 +18,11 @@ class SyncService {
   );
 
   WebSocketChannel? _signalingChannel;
+  
+  // WebRTC components
+  RTCPeerConnection? _peerConnection;
+  RTCDataChannel? _dataChannel;
+  String? _activePeerId;
 
   final _uuid = const Uuid();
   final String _deviceId;
@@ -52,13 +58,38 @@ class SyncService {
   SyncService({String? deviceId, String? deviceName})
     : _deviceId = deviceId ?? const Uuid().v4(),
       deviceName = deviceName ?? 'MyKi Device' {
-    _loadPairedDevices();
-    _initializeKeys();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadDeviceIdentity();
+    await _loadPairedDevices();
+    await _initializeKeys();
+  }
+
+  Future<void> _loadDeviceIdentity() async {
+    final savedId = await _storage.read(key: 'device_id');
+    if (savedId != null) {
+      // Logic to handle saved device ID
+    } else {
+      await _storage.write(key: 'device_id', value: _deviceId);
+    }
   }
 
   Future<void> _initializeKeys() async {
     final algorithm = Ed25519();
-    _keyPair = await algorithm.newKeyPair();
+    
+    final savedPrivateKey = await _storage.read(key: 'device_private_key');
+    if (savedPrivateKey != null) {
+      final privateKeyBytes = base64Decode(savedPrivateKey);
+      _keyPair = await algorithm.newKeyPairFromSeed(privateKeyBytes);
+    } else {
+      _keyPair = await algorithm.newKeyPair();
+      final privateKeyData = await _keyPair.extract();
+      final privateKeyBytes = privateKeyData.bytes;
+      await _storage.write(key: 'device_private_key', value: base64Encode(privateKeyBytes));
+    }
+
     final publicKeyData = await _keyPair.extractPublicKey();
     _publicKey = base64Encode(publicKeyData.bytes);
   }
@@ -90,55 +121,6 @@ class SyncService {
   Future<void> _savePairedDevices() async {
     final data = json.encode(_pairedDevices.map((d) => d.toMap()).toList());
     await _storage.write(key: 'paired_devices', value: data);
-  }
-
-  /// Connect to a device via QR pairing info
-  Future<bool> connectDevice(
-    String targetId,
-    String targetPublicKey,
-    String sessionKey,
-  ) async {
-    // Store the pairing info
-    final pairedDevice = PairedDevice(
-      id: targetId,
-      name: 'New Device', // Default name, will be updated on first sync
-      publicKey: targetPublicKey,
-      sessionKey: sessionKey,
-      pairedAt: DateTime.now(),
-    );
-
-    // Check if already paired
-    _pairedDevices.removeWhere((d) => d.id == targetId);
-    _pairedDevices.add(pairedDevice);
-    await _savePairedDevices();
-
-    // Initiate pairing request via signaling
-    _sendSignalingMessage({
-      'type': 'pairing_request',
-      'targetId': targetId,
-      'senderId': _deviceId,
-      'senderName': deviceName,
-      'publicKey': publicKey,
-      'sessionKey': sessionKey,
-    });
-
-    _updateState(ConnectionState.connecting);
-    return true;
-  }
-
-  /// Save a paired device from QR scan
-  Future<void> savePairedDevice(dynamic pairingInfo) async {
-    final device = PairedDevice(
-      id: pairingInfo.deviceId,
-      name: pairingInfo.deviceName,
-      publicKey: pairingInfo.publicKey,
-      sessionKey: '', // Will be established during handshake
-      pairedAt: DateTime.now(),
-    );
-
-    _pairedDevices.removeWhere((d) => d.id == device.id);
-    _pairedDevices.add(device);
-    await _savePairedDevices();
   }
 
   /// Connect to signaling server
@@ -182,36 +164,99 @@ class SyncService {
 
   /// Disconnect from signaling server
   Future<void> disconnect() async {
+    await _dataChannel?.close();
+    await _peerConnection?.close();
     await _signalingChannel?.sink.close();
     _isConnected = false;
     _updateState(ConnectionState.disconnected);
   }
 
-  /// Discover available peers (those online on the signaling server)
+  /// Discover available peers
   Future<void> discoverPeers() async {
     _sendSignalingMessage({'type': 'discover', 'deviceId': _deviceId});
   }
 
-  /// Connect to a peer device for direct sync
+  /// Connect to a peer device for direct sync using WebRTC
   Future<void> connectToPeer(String peerDeviceId) async {
     final paired = _pairedDevices.any((d) => d.id == peerDeviceId);
     if (!paired) {
       throw Exception('Device not paired');
     }
 
+    _activePeerId = peerDeviceId;
+    await _createPeerConnection(peerDeviceId);
+    
+    // Create data channel
+    final dcInit = RTCDataChannelInit();
+    dcInit.ordered = true;
+    _dataChannel = await _peerConnection!.createDataChannel('sync', dcInit);
+    _setupDataChannel(_dataChannel!);
+
+    // Create and send offer
+    final offer = await _peerConnection!.createOffer();
+    await _peerConnection!.setLocalDescription(offer);
+
     _sendSignalingMessage({
-      'type': 'connect_to_peer',
+      'type': 'offer',
       'targetId': peerDeviceId,
       'senderId': _deviceId,
+      'sdp': offer.sdp,
     });
 
     _updateState(ConnectionState.connecting);
   }
 
-  void _handleSignalingMessage(dynamic data) {
+  Future<void> _createPeerConnection(String peerId) async {
+    final configuration = {
+      'iceServers': [
+        {'urls': 'stun:stun.l.google.com:19302'},
+      ]
+    };
+
+    _peerConnection = await createPeerConnection(configuration);
+
+    _peerConnection!.onIceCandidate = (candidate) {
+      _sendSignalingMessage({
+        'type': 'candidate',
+        'targetId': peerId,
+        'senderId': _deviceId,
+        'candidate': candidate.toMap(),
+      });
+    };
+
+    _peerConnection!.onConnectionState = (state) {
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+        _isConnected = true;
+        _updateState(ConnectionState.connected);
+      } else if (state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+        _isConnected = false;
+        _updateState(ConnectionState.disconnected);
+      }
+    };
+
+    _peerConnection!.onDataChannel = (channel) {
+      _dataChannel = channel;
+      _setupDataChannel(channel);
+    };
+  }
+
+  void _setupDataChannel(RTCDataChannel channel) {
+    channel.onMessage = (data) {
+      _handleSyncData(data.text, _activePeerId ?? 'unknown');
+    };
+    channel.onDataChannelState = (state) {
+      if (state == RTCDataChannelState.RTCDataChannelStateOpen) {
+        _isConnected = true;
+        _updateState(ConnectionState.connected);
+      }
+    };
+  }
+
+  void _handleSignalingMessage(dynamic data) async {
     try {
       final message = json.decode(data as String) as Map<String, dynamic>;
       final type = message['type'] as String?;
+      final senderId = message['senderId'] as String?;
 
       switch (type) {
         case 'peer_list':
@@ -221,24 +266,41 @@ class SyncService {
           _peerListController.add(peers);
           break;
 
-        case 'peer_connected':
-          _isConnected = true;
-          _updateState(ConnectionState.connected);
+        case 'offer':
+          _activePeerId = senderId;
+          await _createPeerConnection(senderId!);
+          await _peerConnection!.setRemoteDescription(
+            RTCSessionDescription(message['sdp'], 'offer'),
+          );
+          final answer = await _peerConnection!.createAnswer();
+          await _peerConnection!.setLocalDescription(answer);
+          _sendSignalingMessage({
+            'type': 'answer',
+            'targetId': senderId,
+            'senderId': _deviceId,
+            'sdp': answer.sdp,
+          });
           break;
 
-        case 'peer_disconnected':
-          if (_isConnected) {
-            _updateState(ConnectionState.disconnected);
-            _isConnected = false;
-          }
+        case 'answer':
+          await _peerConnection!.setRemoteDescription(
+            RTCSessionDescription(message['sdp'], 'answer'),
+          );
+          break;
+
+        case 'candidate':
+          final candidateMap = message['candidate'] as Map<String, dynamic>;
+          await _peerConnection!.addCandidate(
+            RTCIceCandidate(
+              candidateMap['candidate'],
+              candidateMap['sdmMid'],
+              candidateMap['sdpMLineIndex'],
+            ),
+          );
           break;
 
         case 'pairing_request':
           _handlePairingRequest(message);
-          break;
-
-        case 'sync_data':
-          _handleSyncData(message['data'], message['senderId']);
           break;
 
         case 'error':
@@ -246,7 +308,7 @@ class SyncService {
           break;
       }
     } catch (e) {
-      // Handle parse error
+      // Handle error
     }
   }
 
@@ -256,7 +318,6 @@ class SyncService {
     final senderPublicKey = message['publicKey'] as String;
     final sessionKey = message['sessionKey'] as String;
 
-    // Store the pairing info
     final pairedDevice = PairedDevice(
       id: senderId,
       name: senderName,
@@ -269,7 +330,6 @@ class SyncService {
     _pairedDevices.add(pairedDevice);
     await _savePairedDevices();
 
-    // Acknowledge pairing
     _sendSignalingMessage({
       'type': 'pairing_response',
       'targetId': senderId,
@@ -289,14 +349,19 @@ class SyncService {
     }
   }
 
-  /// Send a sync message to connected peer
+  /// Send a sync message to connected peer via WebRTC DataChannel
   Future<void> sendMessage(SyncMessage message, String targetId) async {
-    _sendSignalingMessage({
-      'type': 'sync_data',
-      'targetId': targetId,
-      'senderId': _deviceId,
-      'data': json.encode(message.toJson()),
-    });
+    if (_dataChannel != null && _dataChannel!.state == RTCDataChannelState.RTCDataChannelStateOpen) {
+      _dataChannel!.send(RTCDataChannelMessage(json.encode(message.toJson())));
+    } else {
+      // Fallback to signaling if P2P not established (less secure, but functional)
+      _sendSignalingMessage({
+        'type': 'sync_data',
+        'targetId': targetId,
+        'senderId': _deviceId,
+        'data': json.encode(message.toJson()),
+      });
+    }
   }
 
   /// Request sync from peer
@@ -319,7 +384,6 @@ class SyncService {
 
     await sendMessage(message, targetId);
 
-    // Timeout after 30 seconds
     final result = await completer.future.timeout(
       const Duration(seconds: 30),
       onTimeout: () => null,

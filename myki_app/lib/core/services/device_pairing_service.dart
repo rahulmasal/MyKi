@@ -155,12 +155,13 @@ class DevicePairingService extends ChangeNotifier {
   }
 
   String _generateSessionKey() {
-    // Generate random session key for secure channel
-    final random = Uint8List(32);
+    // Generate cryptographically secure random session key
+    final random = math.Random.secure();
+    final values = Uint8List(32);
     for (int i = 0; i < 32; i++) {
-      random[i] = DateTime.now().microsecondsSinceEpoch % 256;
+      values[i] = random.nextInt(256);
     }
-    return base64Encode(random);
+    return base64Encode(values);
   }
 }
 
@@ -322,6 +323,11 @@ class MyDeviceQRWidget extends StatelessWidget {
           'Show this QR to another device',
           style: TextStyle(fontSize: 14, color: Colors.grey[600]),
         ),
+      ],
+    );
+  }
+}
+    ),
       ],
     );
   }

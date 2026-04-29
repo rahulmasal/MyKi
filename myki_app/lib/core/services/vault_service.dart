@@ -9,6 +9,9 @@ class VaultService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
+  // In-memory session key (never persisted)
+  SecretKey? _sessionKey;
+
   // Crypto instance for Argon2id
   final _argon2 = Argon2id(
     memory: 65536, // 64MB
@@ -19,6 +22,9 @@ class VaultService {
 
   // AES-GCM for encryption
   final _aesGcm = AesGcm.with256bits();
+
+  /// Check if vault is currently unlocked and session is active
+  bool get isUnlocked => _sessionKey != null;
 
   /// Check if vault exists
   Future<bool> hasVault() async {
@@ -45,6 +51,9 @@ class VaultService {
     final keyBytes = await derivedKey.extractBytes();
     final keyHash = await _hashKey(keyBytes);
     await _storage.write(key: 'vault_key_hash', value: keyHash);
+    
+    // Auto-unlock after creation
+    _sessionKey = derivedKey;
   }
 
   /// Unlock vault with master password
@@ -65,25 +74,26 @@ class VaultService {
     final keyHash = await _hashKey(keyBytes);
     final storedHash = await _storage.read(key: 'vault_key_hash');
 
-    return keyHash == storedHash;
+    if (keyHash == storedHash) {
+      _sessionKey = derivedKey;
+      return true;
+    }
+    
+    return false;
   }
 
-  /// Lock the vault
+  /// Lock the vault and clear session key
   Future<void> lockVault() async {
-    await _storage.delete(key: 'session_key');
+    _sessionKey = null;
   }
 
   /// Encrypt data
   Future<String> encrypt(String plaintext, List<int> nonce) async {
-    final sessionKeyB64 = await _storage.read(key: 'session_key');
-    if (sessionKeyB64 == null) throw Exception('Vault is locked');
-
-    final keyBytes = base64Decode(sessionKeyB64);
-    final key = SecretKey(keyBytes);
+    if (_sessionKey == null) throw Exception('Vault is locked');
 
     final secretBox = await _aesGcm.encrypt(
       utf8.encode(plaintext),
-      secretKey: key,
+      secretKey: _sessionKey!,
       nonce: nonce,
     );
 
@@ -96,11 +106,7 @@ class VaultService {
 
   /// Decrypt data
   Future<String> decrypt(String encryptedData) async {
-    final sessionKeyB64 = await _storage.read(key: 'session_key');
-    if (sessionKeyB64 == null) throw Exception('Vault is locked');
-
-    final keyBytes = base64Decode(sessionKeyB64);
-    final key = SecretKey(keyBytes);
+    if (_sessionKey == null) throw Exception('Vault is locked');
 
     final data = base64Decode(encryptedData);
     final nonce = data.sublist(0, 12);
@@ -109,7 +115,7 @@ class VaultService {
 
     final secretBox = SecretBox(cipherText, nonce: nonce, mac: Mac(mac));
 
-    final decrypted = await _aesGcm.decrypt(secretBox, secretKey: key);
+    final decrypted = await _aesGcm.decrypt(secretBox, secretKey: _sessionKey!);
 
     return utf8.decode(decrypted);
   }
