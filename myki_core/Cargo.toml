@@ -7,6 +7,9 @@ description = "Secure password manager core library"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/myki/myki-core"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 # Cryptography
 argon2 = "0.5"
@@ -37,3 +40,5 @@ url = "2"
 
 # UUID generation
 uuid = { version = "1", features = ["v4"] }
+libc = "0.2"
+zeroize = { version = "1", features = ["derive"] }

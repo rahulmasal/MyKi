@@ -4,223 +4,153 @@ import 'package:google_fonts/google_fonts.dart';
 class MykiAppTheme {
   MykiAppTheme._();
 
-  // App Colors
-  static const Color primaryColor = Color(0xFF6366F1);
-  static const Color secondaryColor = Color(0xFF8B5CF6);
-  static const Color errorColor = Color(0xFFEF4444);
-  static const Color successColor = Color(0xFF10B981);
-  static const Color warningColor = Color(0xFFF59E0B);
-  static const Color backgroundColor = Color(0xFFF8FAFC);
+  // Refined Premium Color Palette
+  static const Color primaryColor = Color(0xFF4F46E5); // Indigo 600
+  static const Color secondaryColor = Color(0xFF0F172A); // Slate 900
+  static const Color accentColor = Color(0xFF10B981); // Emerald 500
+  
+  static const Color errorColor = Color(0xFFEF4444); // Red 500
+  static const Color successColor = Color(0xFF10B981); // Emerald 500
+  static const Color warningColor = Color(0xFFF59E0B); // Amber 500
+  
+  static const Color backgroundColor = Color(0xFFF8FAFC); // Slate 50
   static const Color surfaceColor = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1E293B);
-  static const Color textSecondary = Color(0xFF64748B);
+  
+  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
+  static const Color textSecondary = Color(0xFF64748B); // Slate 500
+  static const Color textHint = Color(0xFF94A3B8); // Slate 400
+
+  // Gradients for premium feel
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 class AppTheme {
   AppTheme._();
 
-  // Colors
-  static const Color appPrimaryColor = Color(0xFF6366F1);
-  static const Color secondaryColor = Color(0xFF8B5CF6);
-  static const Color errorColor = Color(0xFFEF4444);
-  static const Color successColor = Color(0xFF10B981);
-  static const Color warningColor = Color(0xFFF59E0B);
-
-  // Light Theme
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      scaffoldBackgroundColor: MykiAppTheme.backgroundColor,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: appPrimaryColor,
+        seedColor: MykiAppTheme.primaryColor,
         brightness: Brightness.light,
-        primary: appPrimaryColor,
-        secondary: secondaryColor,
-        error: errorColor,
+        primary: MykiAppTheme.primaryColor,
+        secondary: MykiAppTheme.secondaryColor,
+        error: MykiAppTheme.errorColor,
+        surface: MykiAppTheme.surfaceColor,
       ),
       textTheme: GoogleFonts.interTextTheme().copyWith(
         displayLarge: GoogleFonts.inter(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          letterSpacing: -0.5,
+          fontSize: 36,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.0,
+          color: MykiAppTheme.textPrimary,
         ),
         displayMedium: GoogleFonts.inter(
           fontSize: 28,
           fontWeight: FontWeight.bold,
           letterSpacing: -0.5,
+          color: MykiAppTheme.textPrimary,
         ),
         headlineLarge: GoogleFonts.inter(
           fontSize: 24,
-          fontWeight: FontWeight.w600,
-        ),
-        headlineMedium: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.bold,
+          letterSpacing: -0.5,
+          color: MykiAppTheme.textPrimary,
         ),
         titleLarge: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-        ),
-        titleMedium: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
+          color: MykiAppTheme.textPrimary,
         ),
         bodyLarge: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.normal,
+          color: MykiAppTheme.textPrimary,
         ),
         bodyMedium: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.normal,
-        ),
-        labelLarge: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
+          color: MykiAppTheme.textSecondary,
         ),
       ),
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
+        backgroundColor: MykiAppTheme.surfaceColor,
+        foregroundColor: MykiAppTheme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: Colors.black87,
+          color: MykiAppTheme.textPrimary,
         ),
+        iconTheme: const IconThemeData(color: MykiAppTheme.textPrimary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          elevation: 0,
+          backgroundColor: MykiAppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: MykiAppTheme.primaryColor,
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.grey.shade100,
+        fillColor: MykiAppTheme.surfaceColor,
+        hintStyle: GoogleFonts.inter(color: MykiAppTheme.textHint),
+        labelStyle: GoogleFonts.inter(color: MykiAppTheme.textSecondary),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.slate.shade200, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.slate.shade200, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appPrimaryColor, width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: MykiAppTheme.primaryColor, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: MykiAppTheme.errorColor, width: 1),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+          horizontal: 20,
+          vertical: 18,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: Colors.grey.shade50,
-      ),
-    );
-  }
-
-  // Dark Theme
-  static ThemeData get darkTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: appPrimaryColor,
-        brightness: Brightness.dark,
-        primary: appPrimaryColor,
-        secondary: secondaryColor,
-        error: errorColor,
-      ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
-          .copyWith(
-            displayLarge: GoogleFonts.inter(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-            displayMedium: GoogleFonts.inter(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-            headlineLarge: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-            ),
-            headlineMedium: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-            titleLarge: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-            titleMedium: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-            bodyLarge: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.normal,
-            ),
-            bodyMedium: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.normal,
-            ),
-            labelLarge: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-      appBarTheme: AppBarTheme(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.slate.shade200, width: 1),
         ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.grey.shade900,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appPrimaryColor, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: Colors.grey.shade900,
+        color: MykiAppTheme.surfaceColor,
+        clipBehavior: Clip.antiAlias,
       ),
     );
   }

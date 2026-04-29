@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'sync_service.dart';
+import 'package:cryptography/cryptography.dart';
 
 /// Device pairing info encoded in QR code
 class DevicePairingInfo {
@@ -12,6 +14,7 @@ class DevicePairingInfo {
   final String publicKey;
   final String relayServer;
   final int timestamp;
+  final String? signature; // Ed25519 signature
 
   DevicePairingInfo({
     required this.deviceId,
@@ -19,6 +22,7 @@ class DevicePairingInfo {
     required this.publicKey,
     required this.relayServer,
     required this.timestamp,
+    this.signature,
   });
 
   Map<String, dynamic> toJson() => {
@@ -27,6 +31,7 @@ class DevicePairingInfo {
     'publicKey': publicKey,
     'relayServer': relayServer,
     'timestamp': timestamp,
+    if (signature != null) 'signature': signature,
   };
 
   factory DevicePairingInfo.fromJson(Map<String, dynamic> json) {
@@ -36,6 +41,7 @@ class DevicePairingInfo {
       publicKey: json['publicKey'] as String,
       relayServer: json['relayServer'] as String,
       timestamp: json['timestamp'] as int,
+      signature: json['signature'] as String?,
     );
   }
 
@@ -49,6 +55,16 @@ class DevicePairingInfo {
       return null;
     }
   }
+
+  /// Get data that should be signed (excludes the signature field itself)
+  List<int> getSigningData() {
+    final map = toJson();
+    map.remove('signature');
+    // Sort keys for consistent hashing/signing
+    final sortedKeys = map.keys.toList()..sort();
+    final sortedMap = {for (var k in sortedKeys) k: map[k]};
+    return utf8.encode(jsonEncode(sortedMap));
+  }
 }
 
 /// Service for device pairing via QR codes
@@ -57,63 +73,93 @@ class DevicePairingService extends ChangeNotifier {
 
   DevicePairingService(this._syncService);
 
-  /// Generate a QR code data string for this device
-  String generatePairingQRData() {
-    final pairingInfo = DevicePairingInfo(
+  /// Generate a signed QR code data string for this device
+  Future<String> generatePairingQRData() async {
+    final info = DevicePairingInfo(
       deviceId: _syncService.deviceId,
       deviceName: _syncService.deviceName,
       publicKey: _syncService.publicKey,
       relayServer: _syncService.relayServerUrl,
       timestamp: DateTime.now().millisecondsSinceEpoch,
     );
-    return pairingInfo.toBase64();
+    
+    // Sign the info
+    final signature = await _syncService.signData(info.getSigningData());
+    
+    final signedInfo = DevicePairingInfo(
+      deviceId: info.deviceId,
+      deviceName: info.deviceName,
+      publicKey: info.publicKey,
+      relayServer: info.relayServer,
+      timestamp: info.timestamp,
+      signature: signature,
+    );
+    
+    return signedInfo.toBase64();
   }
 
   /// Widget to display QR code for other devices to scan
   Widget buildPairingQRWidget({double size = 250}) {
-    final qrData = generatePairingQRData();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: QrImageView(
-            data: qrData,
-            version: QrVersions.auto,
-            size: size,
-            backgroundColor: Colors.white,
-            errorCorrectionLevel: QrErrorCorrectLevel.M,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Scan this QR code with another device',
-          style: TextStyle(color: Colors.grey[600], fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return FutureBuilder<String>(
+      future: generatePairingQRData(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: size,
+            width: size,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        final qrData = snapshot.data!;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.phone_android, size: 20, color: Colors.grey[600]),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: QrImageView(
+                data: qrData,
+                version: QrVersions.auto,
+                size: size,
+                backgroundColor: Colors.white,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              _syncService.deviceName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              'Scan this QR code with another device',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.phone_android, size: 20, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Text(
+                  _syncService.deviceName,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
             ),
           ],
-        ),
-      ],
+        );
+      }
     );
   }
 
   /// Scan QR code and initiate pairing
   Future<DevicePairingInfo?> scanPairingQR(String data) async {
     final pairingInfo = DevicePairingInfo.fromBase64(data);
-    if (pairingInfo == null) return null;
+    if (pairingInfo == null || pairingInfo.signature == null) return null;
+
+    // Verify signature
+    final isValid = await _verifySignature(pairingInfo);
+    if (!isValid) return null;
 
     // Validate timestamp (reject if older than 5 minutes)
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -128,6 +174,27 @@ class DevicePairingService extends ChangeNotifier {
     }
 
     return pairingInfo;
+  }
+
+  Future<bool> _verifySignature(DevicePairingInfo info) async {
+    try {
+      final algorithm = Ed25519();
+      final publicKey = SimplePublicKey(
+        base64Decode(info.publicKey),
+        type: KeyPairType.ed25519,
+      );
+      final signature = Signature(
+        base64Decode(info.signature!),
+        publicKey: publicKey,
+      );
+      
+      return await algorithm.verify(
+        info.getSigningData(),
+        signature: signature,
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Initiate secure pairing with scanned device
@@ -323,11 +390,6 @@ class MyDeviceQRWidget extends StatelessWidget {
           'Show this QR to another device',
           style: TextStyle(fontSize: 14, color: Colors.grey[600]),
         ),
-      ],
-    );
-  }
-}
-    ),
       ],
     );
   }

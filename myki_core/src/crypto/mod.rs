@@ -75,7 +75,11 @@ impl EncryptedData {
     }
 }
 
+use zeroize::Zeroize;
+
 /// Vault key wrapper
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub struct VaultKey([u8; 32]);
 
 impl VaultKey {
@@ -91,6 +95,8 @@ impl VaultKey {
 }
 
 /// MAC key wrapper
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub struct MacKey([u8; 32]);
 
 impl MacKey {

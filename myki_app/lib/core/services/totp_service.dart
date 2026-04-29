@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 import 'package:otp/otp.dart';
-import 'package:base32/base32.dart';
+import 'rust_bridge_service.dart';
 
-/// TOTP (Time-based One-Time Password) service implementing RFC 6238
+/// TOTP (Time-based One-Time Password) service implementing RFC 6238 via Rust Core
 class TotpService {
+  static final _rustBridge = RustBridgeService();
+
   /// Generate current TOTP code for a given secret
   static String generateCode(
     String secret, {
@@ -12,23 +14,12 @@ class TotpService {
     int period = 30,
     int? timestamp,
   }) {
-    try {
-      final now = timestamp ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-      // Generate OTP using the otp package
-      final code = OTP.generateTOTPCodeString(
-        secret.toUpperCase().replaceAll(' ', ''),
-        now,
-        algorithm: algorithm,
-        isGoogle: true,
-        length: digits,
-        interval: period,
-      );
-
-      return code.padLeft(digits, '0');
-    } catch (e) {
-      return '------';
-    }
+    _rustBridge.initialize();
+    
+    final cleanSecret = secret.toUpperCase().replaceAll(' ', '');
+    final code = _rustBridge.generateTotp(cleanSecret);
+    
+    return code ?? '------';
   }
 
   /// Get remaining seconds until the current code expires
@@ -112,15 +103,10 @@ class TotpService {
     }
   }
 
-  /// Validate a base32 secret
+  /// Validate a base32 secret via Rust Core
   static bool isValidSecret(String secret) {
-    try {
-      final cleanSecret = secret.toUpperCase().replaceAll(RegExp(r'\s+'), '');
-      base32.decode(cleanSecret);
-      return cleanSecret.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
+    _rustBridge.initialize();
+    return _rustBridge.isValidBase32(secret);
   }
 
   /// Clean and normalize a secret string

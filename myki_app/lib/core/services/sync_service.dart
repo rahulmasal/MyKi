@@ -94,6 +94,13 @@ class SyncService {
     _publicKey = base64Encode(publicKeyData.bytes);
   }
 
+  /// Sign data using the device's private key
+  Future<String> signData(List<int> data) async {
+    final algorithm = Ed25519();
+    final signature = await algorithm.sign(data, keyPair: _keyPair);
+    return base64Encode(signature.bytes);
+  }
+
   /// Get this device's ID
   String get deviceId => _deviceId;
 
