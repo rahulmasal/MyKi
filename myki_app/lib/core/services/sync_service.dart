@@ -1,18 +1,38 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cryptography/cryptography.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// P2P Sync Service for encrypted vault synchronization
 /// Uses WebSocket for relay-based sync when direct P2P isn't possible
 class SyncService {
   static const String _signalingServerUrl = 'wss://signaling.myki.local';
+  static const String defaultRelayServer = 'wss://relay.myki.local';
+
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 
   WebSocketChannel? _signalingChannel;
-  WebSocketChannel? _dataChannel;
 
   final _uuid = const Uuid();
   final String _deviceId;
+
+  /// Device name for display in pairing UI
+  final String deviceName;
+
+  /// Public key for E2E encryption
+  String _publicKey = '';
+  String get publicKey => _publicKey;
+
+  /// Private key (should never leave the device)
+  late final SimpleKeyPair _keyPair;
+
+  /// List of paired devices
+  List<PairedDevice> _pairedDevices = [];
 
   bool _isConnected = false;
 
@@ -29,11 +49,105 @@ class SyncService {
   ConnectionState _state = ConnectionState.disconnected;
   ConnectionState get state => _state;
 
-  SyncService({String? deviceId}) : _deviceId = deviceId ?? const Uuid().v4();
+  SyncService({String? deviceId, String? deviceName})
+    : _deviceId = deviceId ?? const Uuid().v4(),
+      deviceName = deviceName ?? 'MyKi Device' {
+    _loadPairedDevices();
+    _initializeKeys();
+  }
+
+  Future<void> _initializeKeys() async {
+    final algorithm = Ed25519();
+    _keyPair = await algorithm.newKeyPair();
+    final publicKeyData = await _keyPair.extractPublicKey();
+    _publicKey = base64Encode(publicKeyData.bytes);
+  }
+
+  /// Get this device's ID
+  String get deviceId => _deviceId;
+
+  /// Get relay server URL for QR pairing
+  String get relayServerUrl => defaultRelayServer;
+
+  /// Get list of paired devices
+  List<PairedDevice> get pairedDevices => List.unmodifiable(_pairedDevices);
+
+  /// Load paired devices from secure storage
+  Future<void> _loadPairedDevices() async {
+    try {
+      final data = await _storage.read(key: 'paired_devices');
+      if (data != null) {
+        final List<dynamic> jsonList = json.decode(data);
+        _pairedDevices =
+            jsonList.map((j) => PairedDevice.fromMap(j)).toList();
+      }
+    } catch (e) {
+      _pairedDevices = [];
+    }
+  }
+
+  /// Save paired devices to secure storage
+  Future<void> _savePairedDevices() async {
+    final data = json.encode(_pairedDevices.map((d) => d.toMap()).toList());
+    await _storage.write(key: 'paired_devices', value: data);
+  }
+
+  /// Connect to a device via QR pairing info
+  Future<bool> connectDevice(
+    String targetId,
+    String targetPublicKey,
+    String sessionKey,
+  ) async {
+    // Store the pairing info
+    final pairedDevice = PairedDevice(
+      id: targetId,
+      name: 'New Device', // Default name, will be updated on first sync
+      publicKey: targetPublicKey,
+      sessionKey: sessionKey,
+      pairedAt: DateTime.now(),
+    );
+
+    // Check if already paired
+    _pairedDevices.removeWhere((d) => d.id == targetId);
+    _pairedDevices.add(pairedDevice);
+    await _savePairedDevices();
+
+    // Initiate pairing request via signaling
+    _sendSignalingMessage({
+      'type': 'pairing_request',
+      'targetId': targetId,
+      'senderId': _deviceId,
+      'senderName': deviceName,
+      'publicKey': publicKey,
+      'sessionKey': sessionKey,
+    });
+
+    _updateState(ConnectionState.connecting);
+    return true;
+  }
+
+  /// Save a paired device from QR scan
+  Future<void> savePairedDevice(dynamic pairingInfo) async {
+    final device = PairedDevice(
+      id: pairingInfo.deviceId,
+      name: pairingInfo.deviceName,
+      publicKey: pairingInfo.publicKey,
+      sessionKey: '', // Will be established during handshake
+      pairedAt: DateTime.now(),
+    );
+
+    _pairedDevices.removeWhere((d) => d.id == device.id);
+    _pairedDevices.add(device);
+    await _savePairedDevices();
+  }
 
   /// Connect to signaling server
   Future<void> connect() async {
+    if (_state == ConnectionState.connected) return;
+
     try {
+      _updateState(ConnectionState.connecting);
+
       _signalingChannel = WebSocketChannel.connect(
         Uri.parse(_signalingServerUrl),
       );
@@ -44,6 +158,7 @@ class SyncService {
       _sendSignalingMessage({
         'type': 'register',
         'deviceId': _deviceId,
+        'deviceName': deviceName,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       });
 
@@ -65,23 +180,25 @@ class SyncService {
     }
   }
 
-  /// Disconnect from signaling server and close connections
+  /// Disconnect from signaling server
   Future<void> disconnect() async {
-    await _dataChannel?.sink.close();
     await _signalingChannel?.sink.close();
-
     _isConnected = false;
     _updateState(ConnectionState.disconnected);
   }
 
-  /// Discover available peers
-  Future<List<PeerDevice>> discoverPeers() async {
+  /// Discover available peers (those online on the signaling server)
+  Future<void> discoverPeers() async {
     _sendSignalingMessage({'type': 'discover', 'deviceId': _deviceId});
-    return [];
   }
 
   /// Connect to a peer device for direct sync
   Future<void> connectToPeer(String peerDeviceId) async {
+    final paired = _pairedDevices.any((d) => d.id == peerDeviceId);
+    if (!paired) {
+      throw Exception('Device not paired');
+    }
+
     _sendSignalingMessage({
       'type': 'connect_to_peer',
       'targetId': peerDeviceId,
@@ -105,7 +222,6 @@ class SyncService {
           break;
 
         case 'peer_connected':
-          // Established connection to peer
           _isConnected = true;
           _updateState(ConnectionState.connected);
           break;
@@ -117,9 +233,12 @@ class SyncService {
           }
           break;
 
+        case 'pairing_request':
+          _handlePairingRequest(message);
+          break;
+
         case 'sync_data':
-          // Handle incoming sync data
-          _handleSyncData(message['data']);
+          _handleSyncData(message['data'], message['senderId']);
           break;
 
         case 'error':
@@ -131,7 +250,35 @@ class SyncService {
     }
   }
 
-  void _handleSyncData(dynamic data) {
+  void _handlePairingRequest(Map<String, dynamic> message) async {
+    final senderId = message['senderId'] as String;
+    final senderName = message['senderName'] as String;
+    final senderPublicKey = message['publicKey'] as String;
+    final sessionKey = message['sessionKey'] as String;
+
+    // Store the pairing info
+    final pairedDevice = PairedDevice(
+      id: senderId,
+      name: senderName,
+      publicKey: senderPublicKey,
+      sessionKey: sessionKey,
+      pairedAt: DateTime.now(),
+    );
+
+    _pairedDevices.removeWhere((d) => d.id == senderId);
+    _pairedDevices.add(pairedDevice);
+    await _savePairedDevices();
+
+    // Acknowledge pairing
+    _sendSignalingMessage({
+      'type': 'pairing_response',
+      'targetId': senderId,
+      'senderId': _deviceId,
+      'status': 'accepted',
+    });
+  }
+
+  void _handleSyncData(dynamic data, String senderId) {
     try {
       if (data is String) {
         final syncMessage = SyncMessage.fromJson(json.decode(data));
@@ -143,20 +290,17 @@ class SyncService {
   }
 
   /// Send a sync message to connected peer
-  Future<void> sendMessage(SyncMessage message) async {
-    if (!_isConnected) {
-      // Queue for later if not connected
-      return;
-    }
-
+  Future<void> sendMessage(SyncMessage message, String targetId) async {
     _sendSignalingMessage({
       'type': 'sync_data',
+      'targetId': targetId,
+      'senderId': _deviceId,
       'data': json.encode(message.toJson()),
     });
   }
 
   /// Request sync from peer
-  Future<SyncResponse?> requestSync(VectorClock since) async {
+  Future<SyncResponse?> requestSync(String targetId, VectorClock since) async {
     final message = SyncMessage(
       id: _uuid.v4(),
       type: MessageType.syncRequest,
@@ -168,12 +312,12 @@ class SyncService {
     final completer = Completer<SyncResponse?>();
 
     final subscription = messages.listen((response) {
-      if (response.type == MessageType.syncResponse) {
+      if (response.type == MessageType.syncResponse && response.senderId == targetId) {
         completer.complete(SyncResponse.fromMessage(response));
       }
     });
 
-    await sendMessage(message);
+    await sendMessage(message, targetId);
 
     // Timeout after 30 seconds
     final result = await completer.future.timeout(
@@ -186,9 +330,7 @@ class SyncService {
   }
 
   /// Send local changes to peer
-  Future<void> sendChanges(List<SyncChange> changes) async {
-    if (!_isConnected) return;
-
+  Future<void> sendChanges(String targetId, List<SyncChange> changes) async {
     final message = SyncMessage(
       id: _uuid.v4(),
       type: MessageType.changes,
@@ -197,7 +339,7 @@ class SyncService {
       payload: {'changes': changes.map((c) => c.toMap()).toList()},
     );
 
-    await sendMessage(message);
+    await sendMessage(message, targetId);
   }
 
   void _sendSignalingMessage(Map<String, dynamic> message) {
@@ -396,6 +538,43 @@ class PeerDevice {
       name: map['name'] as String? ?? 'Unknown Device',
       lastSeen: DateTime.fromMillisecondsSinceEpoch(map['lastSeen'] as int),
       isOnline: map['isOnline'] as bool? ?? false,
+    );
+  }
+}
+
+/// Paired device info (from QR code pairing)
+class PairedDevice {
+  final String id;
+  final String name;
+  final String publicKey;
+  final String sessionKey;
+  final DateTime pairedAt;
+
+  PairedDevice({
+    required this.id,
+    required this.name,
+    required this.publicKey,
+    required this.sessionKey,
+    required this.pairedAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'publicKey': publicKey,
+      'sessionKey': sessionKey,
+      'pairedAt': pairedAt.millisecondsSinceEpoch,
+    };
+  }
+
+  factory PairedDevice.fromMap(Map<String, dynamic> map) {
+    return PairedDevice(
+      id: map['id'],
+      name: map['name'],
+      publicKey: map['publicKey'],
+      sessionKey: map['sessionKey'],
+      pairedAt: DateTime.fromMillisecondsSinceEpoch(map['pairedAt']),
     );
   }
 }

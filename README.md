@@ -279,7 +279,8 @@ myki/
 │   │   │   │   ├── vault_service.dart     # Encrypted storage
 │   │   │   │   ├── biometric_service.dart # Face/Touch ID
 │   │   │   │   ├── totp_service.dart      # 2FA generator
-│   │   │   │   └── sync_service.dart      # P2P sync
+│   │   │   │   ├── sync_service.dart      # P2P sync
+│   │   │   │   └── device_pairing_service.dart # QR-based pairing
 │   │   │   └── constants/
 │   │   ├── data/                     # Data layer
 │   │   ├── domain/                   # Business logic
@@ -288,6 +289,14 @@ myki/
 │   │       ├── pages/                # Screens
 │   │       └── widgets/              # Reusable widgets
 │   └── pubspec.yaml
+│
+├── 🦀 myki_core/                     # Shared Rust Core
+│   ├── src/
+│   │   ├── crypto/                   # Encryption & Hashing
+│   │   ├── totp/                     # TOTP generator logic
+│   │   ├── vault/                    # Database models & CRUD
+│   │   └── lib.rs                    # Library entry point
+│   └── Cargo.toml
 │
 └── 🖥️ myki_extension/                # Tauri Desktop App
     ├── src/
@@ -317,7 +326,7 @@ myki/
 Phase 1 ✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Core Vault
 Phase 2 ✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Biometric Auth
 Phase 3 ✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ TOTP 2FA
-Phase 4 🔨 ━━━━━━━━━━━━━━━                              P2P Sync
+Phase 4 🔨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━          P2P Sync
 Phase 5 🔨 ━━━━━━━━━━                                   Browser Extension
 Phase 6 📋 ━━━                                         Desktop App
 Phase 7 📋 ━━━                                         Emergency Access

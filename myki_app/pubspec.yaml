@@ -37,6 +37,9 @@ dependencies:
   share_plus: ^10.1.4
   qr_flutter: ^4.1.0
 
+  # QR Code scanning
+  mobile_scanner: ^5.2.3
+
   # Networking (for P2P sync)
   dart_webrtc: ^1.8.1
   web_socket_channel: ^2.0.0
