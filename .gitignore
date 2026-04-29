@@ -1,0 +1,46 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.lock
+pubspec.lock
+
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# Mobile
+*.keystore
+*.jks
+key.properties
+
+# Test coverage
+coverage/
+*.lcov
