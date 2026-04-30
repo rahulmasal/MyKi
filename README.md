@@ -99,26 +99,26 @@ While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpas
 
 ## 🏗️ Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           MYKI ARCHITECTURE                              │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-│  │    iOS      │  │  Android   │  │   Desktop   │  │  Browser   │     │
-│  │   App       │  │    App     │  │    App      │  │  Extension │     │
+│  │    iOS      │  │   Android   │  │   Desktop   │  │   Browser   │     │
+│  │    App      │  │     App     │  │     App     │  │  Extension  │     │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘     │
 │         │                │                │                │             │
 │         └────────────────┴────────┬───────┴────────────────┘             │
 │                                   │                                      │
 │                                   ▼                                      │
 │                    ┌──────────────────────────────┐                      │
-│                    │     FLUTTER / RUST CORE     │                      │
+│                    │     FLUTTER / RUST CORE      │                      │
 │                    │  ┌────────────────────────┐  │                      │
 │                    │  │  AES-256-GCM Encrypt   │  │                      │
 │                    │  │  Argon2id Key Deriv    │  │                      │
-│                    │  │  TOTP RFC 6238        │  │                      │
-│                    │  │  CRDT Conflict Res    │  │                      │
+│                    │  │  TOTP RFC 6238         │  │                      │
+│                    │  │  CRDT Conflict Res     │  │                      │
 │                    │  └────────────────────────┘  │                      │
 │                    └──────────────┬───────────────┘                      │
 │                                   │                                      │
@@ -132,16 +132,16 @@ While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpas
 │                         SYNC LAYER (P2P)                                 │
 │                                                                          │
 │  ┌─────────────┐      WebRTC DataChannel      ┌─────────────┐           │
-│  │   Device A  │ ═════════════════════════════ │  Device B   │           │
+│  │   Device A  │ ═════════════════════════════ │   Device B  │           │
 │  └──────┬──────┘                              └──────┬──────┘           │
 │         │                                            │                   │
-│         │  ┌──────────────────────────────────────────┘                   │
-│         │  │                                                           │
-│         ▼  ▼                                                           │
-│  ┌────────────────┐                                                   │
-│  │  Relay Server  │ ← Optional, NEVER sees encrypted data              │
-│  │ (STUN/TURN)    │ ← Only helps establish connection                   │
-│  └────────────────┘                                                   │
+│         │  ┌─────────────────────────────────────────┘                   │
+│         │  │                                                             │
+│         ▼  ▼                                                             │
+│  ┌────────────────┐                                                      │
+│  │  Relay Server  │ ← Optional, NEVER sees encrypted data                │
+│  │  (STUN/TURN)   │ ← Only helps establish connection                    │
+│  └────────────────┘                                                      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -152,36 +152,36 @@ While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpas
 
 ### Encryption Stack
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────┐
-│                    YOUR MASTER PASSWORD                         │
+│                    YOUR MASTER PASSWORD                        │
 └────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                        Argon2id                                  │
-│  • Memory: 64 MB (resists GPU/ASIC attacks)                     │
-│  • Iterations: 3                                                │
-│  • Parallelism: 4                                               │
-│  • Time: ~1 second per unlock attempt                           │
+│                        Argon2id                                │
+│  • Memory: 64 MB (resists GPU/ASIC attacks)                    │
+│  • Iterations: 3                                               │
+│  • Parallelism: 4                                              │
+│  • Time: ~1 second per unlock attempt                          │
 └────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                     MASTER KEY (256-bit)                        │
+│                     MASTER KEY (256-bit)                       │
 └────────────────────────────────────────────────────────────────┘
                               │
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
 ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│  VAULT KEY      │ │   MAC KEY      │ │  SESSION KEY   │
-│  (Encryption)   │ │  (Integrity)   │ │  (Temp ops)    │
+│    VAULT KEY    │ │     MAC KEY     │ │   SESSION KEY   │
+│  (Encryption)   │ │   (Integrity)   │ │   (Temp ops)    │
 └─────────────────┘ └─────────────────┘ └─────────────────┘
               │               │               │
               ▼               ▼               ▼
 ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ AES-256-GCM     │ │ HMAC-SHA256     │ │ AES-256-GCM     │
-│ All vault data  │ │ Data integrity  │ │ Quick ops      │
+│   AES-256-GCM   │ │   HMAC-SHA256   │ │   AES-256-GCM   │
+│ All vault data  │ │ Data integrity  │ │   Quick ops     │
 └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
@@ -214,7 +214,7 @@ While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpas
 
 ### Platform Support
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                             MYKI PLATFORMS                              │
 ├─────────────────────────────────────────────────────────────────────────┤
