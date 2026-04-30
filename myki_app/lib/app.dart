@@ -18,7 +18,7 @@ class MykiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Myki',
+      title: 'Myki: P2P Vault',
       debugShowCheckedModeBanner: false,
       // Sets the visual theme for the entire application.
       theme: AppTheme.lightTheme,

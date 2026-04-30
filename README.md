@@ -1,7 +1,7 @@
-# 🔐 Myki - The Password Manager That Never Forgets
+# 🔐 Myki: Remember Everything, Share Nothing.
 
 <p align="center">
-  <img src="myki_app/assets/images/myki_white.jpg" alt="Myki Logo" width="200">
+  <img src="myki_app/assets/images/logo.svg" alt="Myki Logo" width="200">
 </p>
 
 <p align="center">
@@ -307,7 +307,7 @@ Built with ❤️ and a lot of ☕ by the open source community.
 <p align="center">
   <strong>🔐 Your secrets. Your devices. Your keys.</strong>
   <br>
-  <sub>Myki - The Password Manager That Never Forgets</sub>
+  <sub>Myki: Remember Everything, Share Nothing.</sub>
   <br>
   <sub>Made with ❤️ for the open source community</sub>
 </p>

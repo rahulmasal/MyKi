@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Myki Extension",
+  "productName": "Myki: P2P Vault",
   "version": "0.1.0",
   "identifier": "com.myki.extension",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Myki Extension",
+        "title": "Myki: P2P Vault",
         "width": 400,
         "height": 600,
         "resizable": true,
