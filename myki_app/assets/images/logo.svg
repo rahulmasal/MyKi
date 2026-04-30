@@ -1,23 +1,36 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Outer Shield -->
-  <path d="M256 48L80 112V240C80 348.8 154.4 449.6 256 480C357.6 449.6 432 348.8 432 240V112L256 48Z" fill="#1A73E8"/>
-  
-  <!-- Inner Protection Ring -->
-  <circle cx="256" cy="245" r="100" stroke="white" stroke-width="20" stroke-linecap="round" stroke-dasharray="450 150"/>
-  
-  <!-- P2P Sync Arrows (Top) -->
-  <path d="M320 180L350 210L380 180" stroke="white" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
-  
-  <!-- Keyhole Shape -->
-  <circle cx="256" cy="230" r="35" fill="white"/>
-  <path d="M230 230H282L295 310H217L230 230Z" fill="white"/>
-  
-  <!-- Subtle Gradient Overlay -->
   <defs>
-    <linearGradient id="paint0_linear" x1="256" y1="48" x2="256" y2="480" gradientUnits="userSpaceOnUse">
-      <stop stop-color="white" stop-opacity="0.2"/>
-      <stop offset="1" stop-opacity="0"/>
+    <!-- Modern Gradient for the Shield -->
+    <linearGradient id="shield_grad" x1="80" y1="48" x2="432" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00A3FF"/>
+      <stop offset="100%" stop-color="#0057FF"/>
     </linearGradient>
+    
+    <!-- Glow Effect for the Keyhole -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
   </defs>
-  <path d="M256 48L80 112V240C80 348.8 154.4 449.6 256 480C357.6 449.6 432 348.8 432 240V112L256 48Z" fill="url(#paint0_linear)"/>
+
+  <!-- Main Shield Body with Rounded Points -->
+  <path d="M256 40L70 110V250C70 370 150 470 256 500C362 470 442 370 432 250V110L256 40Z" fill="url(#shield_grad)" />
+  
+  <!-- Subtle Inner Border -->
+  <path d="M256 70L100 130V240C100 340 165 430 256 460C347 430 412 340 412 240V130L256 70Z" fill="white" fill-opacity="0.1" />
+
+  <!-- P2P Network Nodes (Flaticon Style accents) -->
+  <circle cx="120" cy="140" r="12" fill="white" fill-opacity="0.6"/>
+  <circle cx="392" cy="140" r="12" fill="white" fill-opacity="0.6"/>
+  <circle cx="170" cy="430" r="12" fill="white" fill-opacity="0.6"/>
+  <circle cx="342" cy="430" r="12" fill="white" fill-opacity="0.6"/>
+
+  <!-- Modern Keyhole Icon -->
+  <g filter="url(#glow)">
+    <circle cx="256" cy="220" r="45" fill="white"/>
+    <path d="M226 220H286L310 340H202L226 220Z" fill="white"/>
+  </g>
+
+  <!-- Shine Overlay -->
+  <path d="M256 40L70 110V150C180 150 256 40 256 40Z" fill="white" fill-opacity="0.15"/>
 </svg>
