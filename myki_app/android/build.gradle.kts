@@ -19,6 +19,19 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            val android = project.extensions.getByName("android")
+            if (android is com.android.build.gradle.BaseExtension) {
+                if (android.namespace == null) {
+                    android.namespace = "com.myki.patch.${project.name.replace("-", "_").replace(":", "_")}"
+                }
+            }
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
