@@ -1,7 +1,7 @@
 # 🔐 Myki - The Password Manager That Never Forgets
 
 <p align="center">
-  <img src="myki_extension/icons/myki-logo.png" alt="Myki Logo" width="200">
+  <img src="myki_app/assets/images/myki_white.jpg" alt="Myki Logo" width="200">
 </p>
 
 <p align="center">
