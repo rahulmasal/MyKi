@@ -1,6 +1,10 @@
 # 🔐 Myki - The Password Manager That Never Forgets
 
 <p align="center">
+  <img src="myki_extension/icons/myki-logo.png" alt="Myki Logo" width="200">
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Status-Active-success?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20Desktop-green?style=for-the-badge" alt="Platform">

@@ -1,8 +1,6 @@
 [package]
 name = "myki_extension"
 version = "0.1.0"
-description = "Myki Browser Extension - Secure Password Manager"
-authors = ["Myki Team"]
 edition = "2021"
 
 [build-dependencies]
@@ -25,6 +23,10 @@ rand = "0.8"
 rusqlite = { version = "0.31", features = ["bundled"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1.0"
+url = "2.5"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5.0"
 
 [features]
 default = ["custom-protocol"]

@@ -4,7 +4,7 @@
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::LazyLock;
 use uuid::Uuid;
 
 use crate::crypto::{decrypt, encrypt, MasterKey};
@@ -27,7 +27,7 @@ impl Default for Vault {
 }
 
 /// Global vault instance
-pub static VAULT: Mutex<Vault> = Mutex::new(Vault::default());
+pub static VAULT: LazyLock<std::sync::Mutex<Vault>> = LazyLock::new(|| std::sync::Mutex::new(Vault::default()));
 
 /// Credential entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,50 +268,7 @@ pub fn get_credentials_for_url(
 
     let credentials = stmt
         .query_map(params![pattern1, pattern2], |row| {
-            let id: String = row.get(0)?;
-            let title_encrypted: Vec<u8> = row.get(1)?;
-            let username_encrypted: Vec<u8> = row.get(2)?;
-            let password_encrypted: Vec<u8> = row.get(3)?;
-            let url_pattern: Option<String> = row.get(4)?;
-            let notes_encrypted: Option<Vec<u8>> = row.get(5)?;
-            let totp_encrypted: Option<Vec<u8>> = row.get(6)?;
-            let folder_id: Option<String> = row.get(7)?;
-            let favorite: i32 = row.get(8)?;
-            let created_at: i64 = row.get(9)?;
-            let updated_at: i64 = row.get(10)?;
-            let use_count: i32 = row.get(11)?;
-
-            // Decrypt fields
-            let title = decrypt(&title_encrypted, &master_key.as_bytes())
-                .map(|b| String::from_utf8_lossy(&b).to_string())
-                .unwrap_or_default();
-            let username = decrypt(&username_encrypted, &master_key.as_bytes())
-                .map(|b| String::from_utf8_lossy(&b).to_string())
-                .unwrap_or_default();
-            let password = decrypt(&password_encrypted, &master_key.as_bytes())
-                .map(|b| String::from_utf8_lossy(&b).to_string())
-                .unwrap_or_default();
-            let notes = notes_encrypted
-                .and_then(|e| decrypt(&e, &master_key.as_bytes()).ok())
-                .map(|b| String::from_utf8_lossy(&b).to_string());
-            let totp_secret = totp_encrypted
-                .and_then(|e| decrypt(&e, &master_key.as_bytes()).ok())
-                .map(|b| String::from_utf8_lossy(&b).to_string());
-
-            Ok(Credential {
-                id,
-                title,
-                username,
-                password,
-                url_pattern,
-                notes,
-                totp_secret,
-                folder_id,
-                favorite: favorite != 0,
-                created_at,
-                updated_at,
-                use_count,
-            })
+            decrypt_row(row, master_key)
         })
         .map_err(|e| e.to_string())?;
 
@@ -335,49 +292,7 @@ pub fn search_credentials(
 
     let credentials = stmt
         .query_map([], |row| {
-            let id: String = row.get(0)?;
-            let title_encrypted: Vec<u8> = row.get(1)?;
-            let username_encrypted: Vec<u8> = row.get(2)?;
-            let password_encrypted: Vec<u8> = row.get(3)?;
-            let url_pattern: Option<String> = row.get(4)?;
-            let notes_encrypted: Option<Vec<u8>> = row.get(5)?;
-            let totp_encrypted: Option<Vec<u8>> = row.get(6)?;
-            let folder_id: Option<String> = row.get(7)?;
-            let favorite: i32 = row.get(8)?;
-            let created_at: i64 = row.get(9)?;
-            let updated_at: i64 = row.get(10)?;
-            let use_count: i32 = row.get(11)?;
-
-            let title = decrypt(&title_encrypted, &master_key.as_bytes())
-                .map(|b| String::from_utf8_lossy(&b).to_string())
-                .unwrap_or_default();
-            let username = decrypt(&username_encrypted, &master_key.as_bytes())
-                .map(|b| String::from_utf8_lossy(&b).to_string())
-                .unwrap_or_default();
-            let password = decrypt(&password_encrypted, &master_key.as_bytes())
-                .map(|b| String::from_utf8_lossy(&b).to_string())
-                .unwrap_or_default();
-            let notes = notes_encrypted
-                .and_then(|e| decrypt(&e, &master_key.as_bytes()).ok())
-                .map(|b| String::from_utf8_lossy(&b).to_string());
-            let totp_secret = totp_encrypted
-                .and_then(|e| decrypt(&e, &master_key.as_bytes()).ok())
-                .map(|b| String::from_utf8_lossy(&b).to_string());
-
-            Ok(Credential {
-                id,
-                title,
-                username,
-                password,
-                url_pattern,
-                notes,
-                totp_secret,
-                folder_id,
-                favorite: favorite != 0,
-                created_at,
-                updated_at,
-                use_count,
-            })
+            decrypt_row(row, master_key)
         })
         .map_err(|e| e.to_string())?;
 
@@ -529,3 +444,54 @@ fn extract_domain(url: &str) -> String {
         .and_then(|u| u.host_str().map(|h| h.to_string()))
         .unwrap_or_else(|| url.to_string())
 }
+
+/// Helper to decrypt a credential row
+fn decrypt_row(
+    row: &rusqlite::Row,
+    master_key: &MasterKey,
+) -> rusqlite::Result<Credential> {
+    let id: String = row.get(0)?;
+    let title_encrypted: Vec<u8> = row.get(1)?;
+    let username_encrypted: Vec<u8> = row.get(2)?;
+    let password_encrypted: Vec<u8> = row.get(3)?;
+    let url_pattern: Option<String> = row.get(4)?;
+    let notes_encrypted: Option<Vec<u8>> = row.get(5)?;
+    let totp_encrypted: Option<Vec<u8>> = row.get(6)?;
+    let folder_id: Option<String> = row.get(7)?;
+    let favorite: i32 = row.get(8)?;
+    let created_at: i64 = row.get(9)?;
+    let updated_at: i64 = row.get(10)?;
+    let use_count: i32 = row.get(11)?;
+
+    let title = decrypt(&title_encrypted, &master_key.as_bytes())
+        .map(|b| String::from_utf8_lossy(&b).to_string())
+        .unwrap_or_default();
+    let username = decrypt(&username_encrypted, &master_key.as_bytes())
+        .map(|b| String::from_utf8_lossy(&b).to_string())
+        .unwrap_or_default();
+    let password = decrypt(&password_encrypted, &master_key.as_bytes())
+        .map(|b| String::from_utf8_lossy(&b).to_string())
+        .unwrap_or_default();
+    let notes = notes_encrypted
+        .and_then(|e| decrypt(&e, &master_key.as_bytes()).ok())
+        .map(|b| String::from_utf8_lossy(&b).to_string());
+    let totp_secret = totp_encrypted
+        .and_then(|e| decrypt(&e, &master_key.as_bytes()).ok())
+        .map(|b| String::from_utf8_lossy(&b).to_string());
+
+    Ok(Credential {
+        id,
+        title,
+        username,
+        password,
+        url_pattern,
+        notes,
+        totp_secret,
+        folder_id,
+        favorite: favorite != 0,
+        created_at,
+        updated_at,
+        use_count,
+    })
+}
+

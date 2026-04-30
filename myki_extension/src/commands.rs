@@ -2,7 +2,7 @@
 //! Provides IPC interface between browser extension and native app
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, Manager};
 
 use crate::crypto::generate_password as crypto_generate_password;
 use crate::vault::{self, Credential, VaultStatus, VAULT};
@@ -93,7 +93,7 @@ impl Default for PasswordOptions {
 
 /// Unlock vault with password
 #[tauri::command]
-pub fn unlock_vault(app_handle: tauri::AppHandle, password: String) -> Result<(), String> {
+pub fn unlock_vault(app_handle: AppHandle, password: String) -> Result<(), String> {
     let vault_dir = app_handle
         .path()
         .app_data_dir()
@@ -151,7 +151,7 @@ pub fn is_vault_unlocked() -> Result<bool, String> {
 
 /// Get vault status
 #[tauri::command]
-pub fn get_vault_status(app_handle: tauri::AppHandle) -> Result<VaultStatus, String> {
+pub fn get_vault_status(app_handle: AppHandle) -> Result<VaultStatus, String> {
     let vault_dir = app_handle
         .path()
         .app_data_dir()
