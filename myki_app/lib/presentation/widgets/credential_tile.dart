@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../blocs/vault/vault_state.dart';
+import '../../core/models/credential.dart';
 
 /// A widget that displays a single credential entry in a list.
 ///

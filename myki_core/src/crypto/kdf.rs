@@ -111,4 +111,28 @@ mod tests {
         assert_eq!(master_key.vault_key.as_bytes().len(), 32);
         assert_eq!(master_key.mac_key.as_bytes().len(), 32);
     }
+
+    #[test]
+    fn test_derive_key_consistency() {
+        let password = "test-password";
+        let salt = [0u8; 16];
+        let config = Argon2Config::default();
+        
+        let key1 = derive_key(password, &salt, &config).unwrap();
+        let key2 = derive_key(password, &salt, &config).unwrap();
+        
+        assert_eq!(key1.vault_key.as_bytes(), key2.vault_key.as_bytes());
+        assert_eq!(key1.mac_key.as_bytes(), key2.mac_key.as_bytes());
+    }
+
+    #[test]
+    fn test_derive_key_different_password() {
+        let salt = [0u8; 16];
+        let config = Argon2Config::default();
+        
+        let key1 = derive_key("pwd1", &salt, &config).unwrap();
+        let key2 = derive_key("pwd2", &salt, &config).unwrap();
+        
+        assert_ne!(key1.vault_key.as_bytes(), key2.vault_key.as_bytes());
+    }
 }

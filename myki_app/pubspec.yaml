@@ -47,6 +47,10 @@ dependencies:
   # TOTP
   otp: ^3.1.4
 
+  # Additional Features
+  pdf: ^3.11.1
+  csv: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

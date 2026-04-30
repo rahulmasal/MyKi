@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import 'vault_event.dart';
 import 'vault_state.dart';
+import '../../../core/models/credential.dart';
 
 /// Business Logic Component (BLoC) that manages the state of the user's vault.
 ///

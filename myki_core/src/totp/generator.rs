@@ -209,4 +209,25 @@ mod tests {
         assert!(Totp::verify(secret, &config, &code, 1));
         assert!(!Totp::verify(secret, &config, "000000", 1));
     }
+
+    #[test]
+    fn test_totp_different_times() {
+        let secret = "JBSWY3DPEHPK3PXP";
+        let config = TotpConfig::default();
+        
+        let code1 = Totp::generate(secret, &config, 1000).unwrap();
+        let code2 = Totp::generate(secret, &config, 1000 + 30).unwrap();
+        let code3 = Totp::generate(secret, &config, 1000 + 1).unwrap();
+        
+        assert_ne!(code1, code2);
+        assert_eq!(code1, code3); // Same period
+    }
+
+    #[test]
+    fn test_totp_invalid_base32() {
+        let secret = "invalid base32!";
+        let config = TotpConfig::default();
+        let result = Totp::now(secret, &config);
+        assert!(result.is_err());
+    }
 }

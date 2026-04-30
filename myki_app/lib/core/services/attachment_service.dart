@@ -1,16 +1,14 @@
 import 'dart:io';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Secure Attachment Service
 /// 
 /// Handles encrypting, storing, and decrypting file attachments linked to vault items.
-/// Real implementation would use the Rust core for AES-256-GCM streaming encryption
+/// real implementation would use the Rust core for AES-256-GCM streaming encryption
 /// to handle large files without loading them entirely into memory.
 class AttachmentService {
-  final _storage = const FlutterSecureStorage();
-
   /// Encrypts and saves a file attachment to the secure local storage.
+
   /// 
   /// Returns the internal identifier (UUID or path) of the secure attachment.
   Future<String> saveAttachment(File file, String credentialId) async {

@@ -96,3 +96,48 @@ impl AeadCipher for Aes256Gcm {
         Aes256Gcm::decrypt(self, encrypted, aad)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_encrypt_decrypt() {
+        let key = VaultKey::from_bytes([0u8; 32]);
+        let cipher = Aes256Gcm::new(&key);
+        let data = b"hello world";
+        
+        let encrypted = cipher.encrypt(data, None).unwrap();
+        let decrypted = cipher.decrypt(&encrypted, None).unwrap();
+        
+        assert_eq!(decrypted, data);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_with_aad() {
+        let key = VaultKey::from_bytes([0u8; 32]);
+        let cipher = Aes256Gcm::new(&key);
+        let data = b"hello world";
+        let aad = b"context-data";
+        
+        let encrypted = cipher.encrypt(data, Some(aad)).unwrap();
+        let decrypted = cipher.decrypt(&encrypted, Some(aad)).unwrap();
+        
+        assert_eq!(decrypted, data);
+    }
+
+    #[test]
+    fn test_decrypt_wrong_aad_fail() {
+        let key = VaultKey::from_bytes([0u8; 32]);
+        let cipher = Aes256Gcm::new(&key);
+        let data = b"hello world";
+        let aad1 = b"correct-aad";
+        let aad2 = b"wrong-aad";
+        
+        let encrypted = cipher.encrypt(data, Some(aad1)).unwrap();
+        let result = cipher.decrypt(&encrypted, Some(aad2));
+        
+        assert!(result.is_err());
+    }
+}
+

@@ -13,4 +13,4 @@ pub mod ffi;
 
 pub use crypto::{MasterKey, VaultKey, MacKey, CryptoError, derive_key, Aes256Gcm, Argon2Config};
 pub use totp::{Totp, TotpConfig, TotpError, Algorithm};
-pub use vault::{Credential, Identity, SecureNote, Folder, TotpSecret, VaultError};
+pub use vault::{Credential, Identity, SecureNote, Folder, TotpSecret, VaultError, VaultDatabase};
