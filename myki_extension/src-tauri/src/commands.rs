@@ -80,6 +80,10 @@ pub async fn create_vault(
     let db = VaultDatabase::create(db_path.to_str().unwrap(), &master_key)
         .map_err(|e| e.to_string())?;
     
+    // Store the salt in the vault_meta table for future unlocks
+    let salt_b64 = myki_core::crypto::encode_base64(&salt);
+    db.set_meta("salt", &salt_b64).map_err(|e| e.to_string())?;
+    
     let mut active_db = state.db.lock().unwrap();
     *active_db = Some(db);
     
@@ -97,9 +101,18 @@ pub async fn unlock_vault(
         return Err("Vault not found".to_string());
     }
 
-    // In a real implementation, we'd read the salt from the vault_meta table.
-    // For this prototype, we'll assume a fixed salt or handle error.
-    let salt = myki_core::crypto::generate_salt(); // Placeholder
+    // Connect to database temporarily to get salt
+    let conn = rusqlite::Connection::open(&db_path)
+        .map_err(|e| format!("Failed to open database: {}", e))?;
+    
+    let mut stmt = conn.prepare("SELECT value FROM vault_meta WHERE key = 'salt'")
+        .map_err(|e| e.to_string())?;
+    let salt_b64: String = stmt.query_row([], |row| row.get(0))
+        .map_err(|_| "Vault salt not found. The database might be corrupted or not a Myki vault.".to_string())?;
+    
+    let salt = myki_core::crypto::decode_base64(&salt_b64)
+        .map_err(|e| format!("Invalid salt format: {}", e))?;
+
     let master_key = derive_key(&password, &salt, &Default::default())
         .map_err(|e| e.to_string())?;
 
@@ -191,3 +204,4 @@ pub fn generate_password(length: usize) -> String {
     }
     pwd
 }
+

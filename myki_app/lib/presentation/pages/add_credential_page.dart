@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../blocs/vault/vault_bloc.dart';
@@ -8,7 +9,7 @@ import '../blocs/vault/vault_event.dart';
 /// A page that provides a form to add a new credential to the vault.
 ///
 /// Users can enter details like title, username, password, URL, and notes.
-/// It also includes a password generation feature.
+/// It also includes a password generation feature and TOTP support with QR scanning.
 class AddCredentialPage extends StatefulWidget {
   const AddCredentialPage({super.key});
 
@@ -26,6 +27,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
   final _passwordController = TextEditingController();
   final _urlController = TextEditingController();
   final _notesController = TextEditingController();
+  final _totpController = TextEditingController();
   
   // Controls visibility of the password in the input field
   bool _obscurePassword = true;
@@ -38,6 +40,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
     _passwordController.dispose();
     _urlController.dispose();
     _notesController.dispose();
+    _totpController.dispose();
     super.dispose();
   }
 
@@ -52,6 +55,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
           password: _passwordController.text,
           url: _urlController.text.isEmpty ? null : _urlController.text,
           notes: _notesController.text.isEmpty ? null : _notesController.text,
+          totpSecret: _totpController.text.isEmpty ? null : _totpController.text,
         ),
       );
       Navigator.of(context).pop();
@@ -74,6 +78,78 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
       _passwordController.text = password;
       _obscurePassword = false; // Show generated password briefly
     });
+  }
+
+  /// Opens a QR code scanner to import a TOTP secret.
+  Future<void> _scanQrCode() async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      builder: (context) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.8,
+        child: Column(
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: const Text('Scan QR Code', style: TextStyle(color: Colors.white)),
+              leading: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            Expanded(
+              child: MobileScanner(
+                onDetect: (capture) {
+                  final List<Barcode> barcodes = capture.barcodes;
+                  for (final barcode in barcodes) {
+                    if (barcode.rawValue != null) {
+                      Navigator.pop(context, barcode.rawValue);
+                      break;
+                    }
+                  }
+                },
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text(
+                'Point your camera at the QR code',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      // Parse otpauth:// uri if present
+      String secret = result;
+      if (result.startsWith('otpauth://')) {
+        final uri = Uri.parse(result);
+        secret = uri.queryParameters['secret'] ?? result;
+        
+        // Also try to fill title and username if possible
+        if (_titleController.text.isEmpty) {
+          final label = Uri.decodeComponent(uri.pathSegments.last);
+          if (label.contains(':')) {
+            final parts = label.split(':');
+            _titleController.text = parts[0];
+            if (_usernameController.text.isEmpty) {
+              _usernameController.text = parts[1].trim();
+            }
+          } else {
+            _titleController.text = label;
+          }
+        }
+      }
+      
+      setState(() {
+        _totpController.text = secret;
+      });
+    }
   }
 
   @override
@@ -203,6 +279,32 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 24),
+
+              // TOTP Secret Input with QR Scanner
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildInputLabel('TOTP Secret (2FA)'),
+                  TextButton.icon(
+                    onPressed: _scanQrCode,
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
+                    label: const Text('Scan QR'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
+              ),
+              TextFormField(
+                controller: _totpController,
+                style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'monospace'),
+                decoration: const InputDecoration(
+                  hintText: 'Enter secret key',
+                  prefixIcon: Icon(Icons.vpn_key_outlined),
+                ),
               ),
               const SizedBox(height: 24),
 

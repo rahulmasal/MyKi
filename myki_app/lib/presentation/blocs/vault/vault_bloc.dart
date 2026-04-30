@@ -53,6 +53,7 @@ class VaultBloc extends Bloc<VaultEvent, VaultState> {
         password: event.password,
         url: event.url,
         notes: event.notes,
+        totpSecret: event.totpSecret,
         createdAt: now,
         updatedAt: now,
       );
@@ -92,6 +93,8 @@ class VaultBloc extends Bloc<VaultEvent, VaultState> {
           password: event.password,
           url: event.url,
           notes: event.notes,
+          totpSecret: event.totpSecret,
+          favorite: existing.favorite,
           createdAt: existing.createdAt,
           updatedAt: DateTime.now(),
         );

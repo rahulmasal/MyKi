@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'rust_bridge_service.dart';
 
@@ -47,8 +49,9 @@ class VaultService {
   Future<void> createVault(String masterPassword) async {
     _rustBridge.initialize();
     
-    // Generate a salt. In a production environment, this should be cryptographically random.
-    final saltBytes = List<int>.generate(32, (i) => i % 256); // Placeholder logic.
+    // Generate a cryptographically secure random salt.
+    final random = Random.secure();
+    final saltBytes = Uint8List.fromList(List<int>.generate(32, (_) => random.nextInt(256)));
     final saltB64 = base64Encode(saltBytes);
 
     // Derive the master key using the strong Argon2id KDF in the Rust core.

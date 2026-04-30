@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 
 import 'app.dart';
 import 'core/services/vault_service.dart';
@@ -39,6 +40,14 @@ void main() async {
   // LocalAuthentication is a third-party plugin for device-level biometric checks.
   final localAuth = LocalAuthentication();
 
+  // Check for jailbreak/root status for security hardening.
+  bool isJailbroken = false;
+  try {
+    isJailbroken = await FlutterJailbreakDetection.jailbroken;
+  } catch (e) {
+    debugPrint('Failed to check jailbreak status: $e');
+  }
+
   // Check biometric availability to inform the AuthBloc about the device's capabilities.
   final canCheckBiometrics = await localAuth.canCheckBiometrics;
   final isDeviceSupported = await localAuth.isDeviceSupported();
@@ -65,7 +74,35 @@ void main() async {
         // VaultBloc manages the state of the credential vault, such as the list of stored credentials.
         BlocProvider<VaultBloc>(create: (_) => VaultBloc()),
       ],
-      child: const MykiApp(),
+      child: isJailbroken 
+        ? const MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 80, color: Colors.red),
+                      SizedBox(height: 24),
+                      Text(
+                        'Security Risk Detected',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Myki cannot run on jailbroken or rooted devices to protect your sensitive data. Please use a secure device.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        : const MykiApp(),
     ),
   );
 }

@@ -25,7 +25,6 @@ impl VaultDatabase {
     /// - `path`: The file system path where the database will be created.
     /// - `master_key`: The key used to protect the vault.
     pub fn create(path: &str, master_key: &MasterKey) -> Result<Self, VaultError> {
-        // ... (connection and schema setup)
         let conn = Connection::open(path)
             .map_err(|e| VaultError::Database(e.to_string()))?;
         
@@ -101,6 +100,32 @@ impl VaultDatabase {
             conn: Mutex::new(conn),
             cipher,
         })
+    }
+
+    /// Sets a metadata value in the vault.
+    pub fn set_meta(&self, key: &str, value: &str) -> Result<(), VaultError> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT OR REPLACE INTO vault_meta (key, value) VALUES (?1, ?2)",
+            params![key, value],
+        ).map_err(|e| VaultError::Database(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Gets a metadata value from the vault.
+    pub fn get_meta(&self, key: &str) -> Result<Option<String>, VaultError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT value FROM vault_meta WHERE key = ?1")
+            .map_err(|e| VaultError::Database(e.to_string()))?;
+        
+        let mut rows = stmt.query(params![key])
+            .map_err(|e| VaultError::Database(e.to_string()))?;
+        
+        if let Some(row) = rows.next().map_err(|e| VaultError::Database(e.to_string()))? {
+            Ok(Some(row.get(0).map_err(|e| VaultError::Database(e.to_string()))?))
+        } else {
+            Ok(None)
+        }
     }
     
     /// Encrypts and saves a credential to the database.

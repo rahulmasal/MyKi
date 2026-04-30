@@ -2621,6 +2621,7 @@ dependencies = [
  "argon2",
  "base32",
  "base64 0.21.7",
+ "hex",
  "hmac",
  "libc",
  "rand 0.8.6",

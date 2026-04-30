@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/services/totp_service.dart';
+import '../../core/services/clipboard_service.dart';
 import '../../core/theme/app_theme.dart';
 
 /// A widget that displays and auto-refreshes Time-based One-Time Password (TOTP) codes.
@@ -98,7 +98,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
 
   /// Copies the current TOTP code to the system clipboard and provides visual feedback.
   void _copyCode() {
-    Clipboard.setData(ClipboardData(text: _currentCode));
+    ClipboardService.copyWithAutoClear(_currentCode);
     setState(() => _copied = true);
 
     // Reset the 'copied' state after a short delay
@@ -117,7 +117,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white),
             SizedBox(width: 12),
-            Text('Code copied to clipboard'),
+            Text('Code copied (clears in 30s)'),
           ],
         ),
         backgroundColor: MykiAppTheme.successColor,

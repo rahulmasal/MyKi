@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:secure_application/secure_application.dart';
 
 import 'core/theme/app_theme.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
@@ -11,6 +12,8 @@ import 'presentation/pages/vault_page.dart';
 ///
 /// This widget sets up the [MaterialApp] and uses a [BlocBuilder] to
 /// determine which page to display based on the current authentication state.
+/// It also uses [SecureApplication] to protect sensitive data from being
+/// screenshotted or visible in the task switcher.
 class MykiApp extends StatelessWidget {
   /// Creates a [MykiApp] widget.
   const MykiApp({super.key});
@@ -24,6 +27,21 @@ class MykiApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       // Uses the system setting to determine whether to use dark or light theme.
       themeMode: ThemeMode.system,
+      builder: (context, child) {
+        return SecureApplication(
+          // Auto-unlock for now as primary auth is handled by AuthBloc.
+          // This mainly provides screen security in the task switcher.
+          onNeedUnlock: (controller) async {
+            controller?.unlock();
+            return SecureApplicationAuthenticationStatus.SUCCESS;
+          },
+          child: SecureGate(
+            blurr: 20,
+            opacity: 0.6,
+            child: child!,
+          ),
+        );
+      },
       // The home property uses BlocBuilder to listen for changes in AuthBloc.
       home: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {

@@ -26,6 +26,8 @@ class VaultAddCredential extends VaultEvent {
   final String? url;
   /// Optional additional information or context.
   final String? notes;
+  /// Optional TOTP secret for 2FA.
+  final String? totpSecret;
 
   const VaultAddCredential({
     required this.title,
@@ -33,10 +35,11 @@ class VaultAddCredential extends VaultEvent {
     required this.password,
     this.url,
     this.notes,
+    this.totpSecret,
   });
 
   @override
-  List<Object?> get props => [title, username, password, url, notes];
+  List<Object?> get props => [title, username, password, url, notes, totpSecret];
 }
 
 /// Dispatched when the user updates an existing credential entry.
@@ -48,6 +51,8 @@ class VaultUpdateCredential extends VaultEvent {
   final String password;
   final String? url;
   final String? notes;
+  /// Optional TOTP secret for 2FA.
+  final String? totpSecret;
 
   const VaultUpdateCredential({
     required this.id,
@@ -56,10 +61,11 @@ class VaultUpdateCredential extends VaultEvent {
     required this.password,
     this.url,
     this.notes,
+    this.totpSecret,
   });
 
   @override
-  List<Object?> get props => [id, title, username, password, url, notes];
+  List<Object?> get props => [id, title, username, password, url, notes, totpSecret];
 }
 
 /// Dispatched when the user removes a credential from their vault.

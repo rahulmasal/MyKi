@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/models/credential.dart';
+import '../../core/services/clipboard_service.dart';
 
 /// A widget that displays a single credential entry in a list.
 ///
@@ -141,14 +141,14 @@ class CredentialTile extends StatelessWidget {
 
   /// Copies the credential's password to the system clipboard and shows a confirmation snackbar.
   void _copyPassword(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: credential.password));
+    ClipboardService.copyWithAutoClear(credential.password);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white),
             SizedBox(width: 12),
-            Text('Password copied to clipboard'),
+            Text('Password copied (clears in 30s)'),
           ],
         ),
         backgroundColor: MykiAppTheme.successColor,

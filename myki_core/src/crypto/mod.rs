@@ -106,6 +106,19 @@ impl VaultKey {
     }
 }
 
+/// Encodes a byte slice into a base64 string.
+pub fn encode_base64(data: &[u8]) -> String {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.encode(data)
+}
+
+/// Decodes a base64 string into a byte vector.
+pub fn decode_base64(encoded: &str) -> Result<Vec<u8>, CryptoError> {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.decode(encoded)
+        .map_err(|e| CryptoError::Decryption(e.to_string()))
+}
+
 /// A wrapper for the 256-bit key used for Message Authentication Codes (MAC).
 /// 
 /// This struct implements `Zeroize`, ensuring that the sensitive key material is
