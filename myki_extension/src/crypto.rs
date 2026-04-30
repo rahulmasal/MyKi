@@ -1,5 +1,5 @@
 //! Cryptographic operations for Myki Extension
-//! Implements AES-256-GCM encryption with Argon2id key derivation
+//! Implements AES-256-GCM encryption with Argon2id key derivation for high security.
 
 #![allow(dead_code)]
 
@@ -12,6 +12,7 @@ use rand::RngCore;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
+/// Errors that can occur during cryptographic operations.
 #[derive(Error, Debug)]
 pub enum CryptoError {
     #[error("Encryption failed")]
@@ -26,29 +27,45 @@ pub enum CryptoError {
     InvalidData,
 }
 
-/// Master key derived from password
+/// A wrapper around the master key derived from the user's password.
+///
+/// This key is used for all symmetric encryption (AES-256-GCM) within the vault.
+/// It is never stored directly; only a hash of it is stored for verification.
 pub struct MasterKey {
+    /// The actual 32-byte key used for encryption.
     key: [u8; 32],
+    /// The 16-byte salt used during the Argon2id derivation.
     salt: [u8; 16],
 }
 
 impl MasterKey {
-    /// Derive master key from password using Argon2id
+    /// Derives a master key from a plaintext password using the Argon2id algorithm.
+    ///
+    /// Argon2id is used to protect against brute-force and rainbow table attacks
+    /// by being memory-hard and time-consuming.
+    ///
+    /// # Arguments
+    /// * `password` - The user's master password.
+    /// * `salt` - An optional 16-byte salt. If None, a new random salt is generated.
     pub fn derive(password: &str, salt: Option<[u8; 16]>) -> Result<Self, CryptoError> {
+        // Use provided salt or generate a fresh one from a secure random number generator (OsRng)
         let salt = salt.unwrap_or_else(|| {
             let mut s = [0u8; 16];
             OsRng.fill_bytes(&mut s);
             s
         });
 
+        // Encode salt to base64 for Argon2
         let salt_string = SaltString::encode_b64(&salt)
             .map_err(|_| CryptoError::KeyDerivationFailed)?;
 
+        // Initialize Argon2id with default secure parameters
         let argon2 = Argon2::default();
         let hash = argon2
             .hash_password(password.as_bytes(), &salt_string)
             .map_err(|_| CryptoError::KeyDerivationFailed)?;
 
+        // Extract the raw bytes from the Argon2 hash to use as our 256-bit AES key
         let hash_bytes = hash.hash.ok_or(CryptoError::KeyDerivationFailed)?;
         let mut key = [0u8; 32];
         key.copy_from_slice(&hash_bytes.as_bytes()[..32]);
@@ -56,54 +73,72 @@ impl MasterKey {
         Ok(Self { key, salt })
     }
 
-    /// Get the derived key bytes
+    /// Returns the raw 32-byte key.
     pub fn as_bytes(&self) -> [u8; 32] {
         self.key
     }
 
-    /// Get the salt
+    /// Returns the 16-byte salt.
     pub fn salt(&self) -> [u8; 16] {
         self.salt
     }
 
-    /// Create from existing key and salt (for loading from storage)
+    /// Reconstructs a MasterKey from existing bytes.
+    ///
+    /// Used when loading a previously derived key from memory or during tests.
     pub fn from_existing(key: [u8; 32], salt: [u8; 16]) -> Self {
         Self { key, salt }
     }
 }
 
-/// Encrypt data using AES-256-GCM
+/// Encrypts data using AES-256-GCM.
+///
+/// AES-256-GCM provides both confidentiality and integrity (it's "Authenticated Encryption").
+///
+/// # Arguments
+/// * `plaintext` - The raw data to encrypt.
+/// * `key` - The 32-byte (256-bit) master key.
+///
+/// # Returns
+/// * `Vec<u8>` - The combined nonce (12 bytes) and ciphertext.
 pub fn encrypt(plaintext: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
     if key.len() != 32 {
         return Err(CryptoError::InvalidKey);
     }
 
+    // Initialize the AES-GCM cipher
     let cipher = Aes256Gcm::new_from_slice(key)
         .map_err(|_| CryptoError::InvalidKey)?;
 
-    // Generate random nonce
+    // Generate a random 12-byte nonce (Number used once)
+    // Security: Nonces MUST be unique for every encryption with the same key.
     let mut nonce_bytes = [0u8; 12];
     OsRng.fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
 
-    // Encrypt
+    // Perform encryption
     let ciphertext = cipher
         .encrypt(nonce, plaintext)
         .map_err(|_| CryptoError::EncryptionFailed)?;
 
-    // Prepend nonce to ciphertext
+    // Store the nonce at the beginning of the result so it can be retrieved for decryption
     let mut result = nonce_bytes.to_vec();
     result.extend(ciphertext);
 
     Ok(result)
 }
 
-/// Decrypt data using AES-256-GCM
+/// Decrypts data using AES-256-GCM.
+///
+/// # Arguments
+/// * `ciphertext` - The data to decrypt (must contain the 12-byte nonce at the start).
+/// * `key` - The 32-byte (256-bit) master key.
 pub fn decrypt(ciphertext: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
     if key.len() != 32 {
         return Err(CryptoError::InvalidKey);
     }
 
+    // Ensure we have at least 12 bytes for the nonce
     if ciphertext.len() < 12 {
         return Err(CryptoError::InvalidData);
     }
@@ -111,24 +146,33 @@ pub fn decrypt(ciphertext: &[u8], key: &[u8; 32]) -> Result<Vec<u8>, CryptoError
     let cipher = Aes256Gcm::new_from_slice(key)
         .map_err(|_| CryptoError::InvalidKey)?;
 
-    // Extract nonce and ciphertext
+    // Extract the 12-byte nonce from the start of the data
     let nonce = Nonce::from_slice(&ciphertext[..12]);
     let encrypted = &ciphertext[12..];
 
-    // Decrypt
+    // Perform decryption and integrity check
     cipher
         .decrypt(nonce, encrypted)
         .map_err(|_| CryptoError::DecryptionFailed)
 }
 
-/// Compute SHA-256 hash
+/// Computes a SHA-256 hash of the input data.
+///
+/// Used for password verification and fingerprinting.
 pub fn hash(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hasher.finalize().into()
 }
 
-/// Generate a secure random password
+/// Generates a cryptographically secure random password.
+///
+/// # Arguments
+/// * `length` - Number of characters.
+/// * `include_uppercase` - Use A-Z.
+/// * `include_lowercase` - Use a-z.
+/// * `include_numbers` - Use 0-9.
+/// * `include_symbols` - Use special characters.
 pub fn generate_password(
     length: usize,
     include_uppercase: bool,
@@ -138,6 +182,7 @@ pub fn generate_password(
 ) -> String {
     let mut charset = String::new();
     
+    // Build the set of allowed characters
     if include_lowercase {
         charset.push_str("abcdefghijklmnopqrstuvwxyz");
     }
@@ -151,12 +196,15 @@ pub fn generate_password(
         charset.push_str("!@#$%^&*()_+-=[]{}|;:,.<>?");
     }
     
+    // Fallback if no options selected
     if charset.is_empty() {
         charset = "abcdefghijklmnopqrstuvwxyz".to_string();
     }
     
     let charset_bytes: Vec<char> = charset.chars().collect();
     let mut password = String::with_capacity(length);
+    
+    // Generate secure random indices into the charset
     let mut random_bytes = [0u8; 64];
     OsRng.fill_bytes(&mut random_bytes);
     
@@ -168,12 +216,19 @@ pub fn generate_password(
     password
 }
 
-/// Verify password against stored hash
+/// Verifies if a password is correct by deriving the key and comparing hashes.
+///
+/// # Arguments
+/// * `password` - The attempt password.
+/// * `salt` - The salt used when the vault was created.
+/// * `stored_hash` - The SHA-256 hash of the correct master key.
 pub fn verify_password(password: &str, salt: &[u8; 16], stored_hash: &[u8; 32]) -> bool {
+    // Re-derive the key with the attempt password and same salt
     let derived = MasterKey::derive(password, Some(*salt)).ok();
     
     match derived {
         Some(key) => {
+            // Hash the resulting key and compare to the stored one
             let computed_hash = hash(&key.as_bytes());
             computed_hash == *stored_hash
         }

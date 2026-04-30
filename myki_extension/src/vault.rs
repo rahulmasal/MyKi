@@ -1,5 +1,5 @@
 //! Vault management for Myki Extension
-//! Handles encrypted storage and retrieval of credentials
+//! Handles encrypted storage and retrieval of credentials using SQLite.
 
 #![allow(dead_code)]
 #![allow(clippy::too_many_arguments)]
@@ -12,25 +12,34 @@ use uuid::Uuid;
 
 use crate::crypto::{decrypt, encrypt, MasterKey};
 
-/// Vault state
+/// Represents the current runtime state of the vault.
+///
+/// This includes the active database connection and the master key needed
+/// for decryption, but only while the vault is unlocked.
 #[derive(Default)]
 pub struct Vault {
+    /// Whether the vault is currently accessible.
     pub is_unlocked: bool,
+    /// Persistent connection to the SQLite database.
     pub connection: Option<Connection>,
+    /// The master key derived from the password, kept in memory for decryption.
     pub master_key: Option<MasterKey>,
 }
 
 #[allow(clippy::derivable_impls)]
 impl Vault {
+    /// Creates a new, locked vault instance.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-/// Global vault instance
+/// Global, thread-safe vault instance accessible across the application.
 pub static VAULT: LazyLock<std::sync::Mutex<Vault>> = LazyLock::new(|| std::sync::Mutex::new(Vault::default()));
 
-/// Credential entry
+/// A single credential entry as it appears to the frontend.
+///
+/// All fields are decrypted before being placed in this struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credential {
     pub id: String,
@@ -47,18 +56,27 @@ pub struct Credential {
     pub use_count: i32,
 }
 
-/// Vault status
+/// High-level overview of the vault's state for the UI.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultStatus {
+    /// True if the database file exists and is initialized.
     pub exists: bool,
+    /// True if the vault is currently unlocked in memory.
     pub is_unlocked: bool,
+    /// Total number of credentials stored.
     pub credential_count: i32,
 }
 
-/// Initialize vault database
+/// Initializes the vault database schema if it doesn't already exist.
+///
+/// Creates tables for:
+/// - `vault_config`: Global settings and password verification.
+/// - `credentials`: Encrypted storage for passwords.
+/// - `folders`: Organization for credentials.
 pub fn init_vault(db_path: &Path) -> Result<(), String> {
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
 
+    // Store salt and master key hash for password verification
     conn.execute(
         "CREATE TABLE IF NOT EXISTS vault_config (
             id INTEGER PRIMARY KEY,
@@ -71,6 +89,7 @@ pub fn init_vault(db_path: &Path) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
 
+    // Main table for credentials. Sensitive data is stored as encrypted BLOBs.
     conn.execute(
         "CREATE TABLE IF NOT EXISTS credentials (
             id TEXT PRIMARY KEY,
@@ -102,6 +121,7 @@ pub fn init_vault(db_path: &Path) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
 
+    // Index for fast URL matching
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_credentials_url ON credentials(url_pattern)",
         [],
@@ -111,11 +131,15 @@ pub fn init_vault(db_path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Create new vault with master password
+/// Creates a new vault database and sets the initial master password.
+///
+/// # Arguments
+/// * `db_path` - Location to create the SQLite file.
+/// * `password` - The master password chosen by the user.
 pub fn create_vault(db_path: &Path, password: &str) -> Result<(), String> {
-    // Check if vault already exists
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
     
+    // Safety check: Don't overwrite an existing vault
     let exists: bool = conn
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM vault_config)",
@@ -128,13 +152,10 @@ pub fn create_vault(db_path: &Path, password: &str) -> Result<(), String> {
         return Err("Vault already exists".to_string());
     }
 
-    // Derive master key
+    // Derive the master key and store the hash for future verification
     let master_key = MasterKey::derive(password, None).map_err(|e| e.to_string())?;
-
-    // Generate verification hash
     let password_hash = crate::crypto::hash(&master_key.as_bytes());
 
-    // Store config
     conn.execute(
         "INSERT INTO vault_config (salt, password_hash, created_at, updated_at) VALUES (?1, ?2, ?3, ?4)",
         params![
@@ -149,11 +170,11 @@ pub fn create_vault(db_path: &Path, password: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Unlock vault with password
+/// Verifies the master password and returns the derived MasterKey.
 pub fn unlock_vault(db_path: &Path, password: &str) -> Result<MasterKey, String> {
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
 
-    // Get stored salt and hash
+    // Retrieve the salt and hash stored during creation
     let (salt, stored_hash): ([u8; 16], [u8; 32]) = conn
         .query_row(
             "SELECT salt, password_hash FROM vault_config LIMIT 1",
@@ -169,10 +190,11 @@ pub fn unlock_vault(db_path: &Path, password: &str) -> Result<MasterKey, String>
         )
         .map_err(|e| e.to_string())?;
 
-    // Derive key and verify
+    // Derive a key with the attempt password
     let master_key = MasterKey::derive(password, Some(salt)).map_err(|e| e.to_string())?;
     let computed_hash = crate::crypto::hash(&master_key.as_bytes());
 
+    // Security: Only return the key if the hashes match
     if computed_hash != stored_hash {
         return Err("Invalid password".to_string());
     }
@@ -180,7 +202,10 @@ pub fn unlock_vault(db_path: &Path, password: &str) -> Result<MasterKey, String>
     Ok(master_key)
 }
 
-/// Add credential to vault
+/// Adds a new credential record to the database.
+///
+/// This function handles the encryption of all sensitive fields before they
+/// touch the disk.
 pub fn add_credential(
     conn: &Connection,
     master_key: &MasterKey,
@@ -194,7 +219,7 @@ pub fn add_credential(
     let id = Uuid::new_v4().to_string();
     let now = chrono_now();
 
-    // Encrypt sensitive fields
+    // Encrypt sensitive fields using the master key (AES-256-GCM)
     let title_encrypted = encrypt(title.as_bytes(), &master_key.as_bytes())
         .map_err(|e| e.to_string())?;
     let username_encrypted = encrypt(username.as_bytes(), &master_key.as_bytes())
@@ -244,16 +269,15 @@ pub fn add_credential(
     })
 }
 
-/// Get credentials for URL
+/// Retrieves and decrypts credentials that match the provided URL.
 pub fn get_credentials_for_url(
     conn: &Connection,
     master_key: &MasterKey,
     url: &str,
 ) -> Result<Vec<Credential>, String> {
-    // Extract domain from URL
     let domain = extract_domain(url);
     
-    // Search for matching credentials
+    // Query database for potential matches
     let mut stmt = conn
         .prepare(
             "SELECT id, title_encrypted, username_encrypted, password_encrypted, 
@@ -267,6 +291,7 @@ pub fn get_credentials_for_url(
     let pattern1 = format!("%{}%", domain);
     let pattern2 = format!("%{}%", url);
 
+    // Iterate through results and decrypt each row
     let credentials = stmt
         .query_map(params![pattern1, pattern2], |row| {
             decrypt_row(row, master_key)
@@ -276,12 +301,14 @@ pub fn get_credentials_for_url(
     credentials.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
-/// Search credentials
+/// Searches all credentials and returns those that match the query.
 pub fn search_credentials(
     conn: &Connection,
     master_key: &MasterKey,
     query: &str,
 ) -> Result<Vec<Credential>, String> {
+    // Note: Since data is encrypted, we have to fetch all and filter in memory,
+    // or store unencrypted searchable fields. Here we fetch and decrypt all.
     let mut stmt = conn
         .prepare(
             "SELECT id, title_encrypted, username_encrypted, password_encrypted, 
@@ -301,7 +328,6 @@ pub fn search_credentials(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    // Filter by search query
     let query_lower = query.to_lowercase();
     Ok(all_credentials
         .into_iter()
@@ -316,14 +342,14 @@ pub fn search_credentials(
         .collect())
 }
 
-/// Delete credential
+/// Permanently deletes a credential by its ID.
 pub fn delete_credential(conn: &Connection, id: &str) -> Result<(), String> {
     conn.execute("DELETE FROM credentials WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     Ok(())
 }
 
-/// Update credential
+/// Updates an existing credential with new information.
 pub fn update_credential(
     conn: &Connection,
     master_key: &MasterKey,
@@ -336,6 +362,7 @@ pub fn update_credential(
 ) -> Result<(), String> {
     let now = chrono_now();
 
+    // Re-encrypt all fields
     let title_encrypted = encrypt(title.as_bytes(), &master_key.as_bytes())
         .map_err(|e| e.to_string())?;
     let username_encrypted = encrypt(username.as_bytes(), &master_key.as_bytes())
@@ -366,7 +393,7 @@ pub fn update_credential(
     Ok(())
 }
 
-/// Increment credential use count
+/// Increments the usage counter for a credential.
 pub fn increment_use_count(conn: &Connection, id: &str) -> Result<(), String> {
     conn.execute(
         "UPDATE credentials SET use_count = use_count + 1 WHERE id = ?1",
@@ -376,7 +403,7 @@ pub fn increment_use_count(conn: &Connection, id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Get vault status
+/// Checks the database to see if it exists and how many items it contains.
 pub fn get_vault_status(db_path: &Path) -> Result<VaultStatus, String> {
     if !db_path.exists() {
         return Ok(VaultStatus {
@@ -413,7 +440,7 @@ pub fn get_vault_status(db_path: &Path) -> Result<VaultStatus, String> {
     })
 }
 
-/// Check if vault exists
+/// Simple check for vault existence.
 pub fn vault_exists(db_path: &Path) -> bool {
     if !db_path.exists() {
         return false;
@@ -430,7 +457,7 @@ pub fn vault_exists(db_path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Helper to get current timestamp
+// Helper to get current timestamp in milliseconds
 fn chrono_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -438,7 +465,7 @@ fn chrono_now() -> i64 {
         .unwrap_or(0)
 }
 
-/// Extract domain from URL
+// Extract domain from URL (e.g., 'https://google.com/search' -> 'google.com')
 fn extract_domain(url: &str) -> String {
     url.parse::<url::Url>()
         .ok()
@@ -446,7 +473,7 @@ fn extract_domain(url: &str) -> String {
         .unwrap_or_else(|| url.to_string())
 }
 
-/// Helper to decrypt a credential row
+// Internal helper to decrypt all fields of a database row and convert to a Credential struct
 fn decrypt_row(
     row: &rusqlite::Row,
     master_key: &MasterKey,
@@ -495,4 +522,5 @@ fn decrypt_row(
         use_count,
     })
 }
+
 

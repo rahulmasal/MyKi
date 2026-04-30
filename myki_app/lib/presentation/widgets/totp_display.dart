@@ -5,14 +5,31 @@ import 'package:flutter/services.dart';
 import '../../core/services/totp_service.dart';
 import '../../core/theme/app_theme.dart';
 
-/// Widget to display and auto-refresh TOTP codes with a premium modern design
+/// A widget that displays and auto-refreshes Time-based One-Time Password (TOTP) codes.
+///
+/// It features a modern design with a circular progress indicator showing the
+/// remaining time until the code expires. Tapping the widget copies the code
+/// to the clipboard.
 class TotpDisplay extends StatefulWidget {
+  /// The secret key used to generate the TOTP code.
   final String secret;
+  
+  /// The issuer (e.g., Google, GitHub) associated with the code.
   final String? issuer;
+  
+  /// The account name (e.g., user@email.com) associated with the code.
   final String? account;
+  
+  /// The number of digits in the generated code (default is 6).
   final int digits;
+  
+  /// The period in seconds for which a code is valid (default is 30).
   final int period;
+  
+  /// The hashing algorithm used (default is 'SHA1').
   final String algorithm;
+  
+  /// Optional callback triggered when the code is copied.
   final VoidCallback? onCopy;
 
   const TotpDisplay({
@@ -31,9 +48,16 @@ class TotpDisplay extends StatefulWidget {
 }
 
 class _TotpDisplayState extends State<TotpDisplay> {
+  // The currently valid TOTP code
   late String _currentCode;
+  
+  // Seconds remaining before the code refreshes
   late int _remainingSeconds;
+  
+  // Timer that updates the code and remaining seconds every second
   Timer? _timer;
+  
+  // Tracks if the code was recently copied to show visual feedback
   bool _copied = false;
 
   @override
@@ -49,12 +73,14 @@ class _TotpDisplayState extends State<TotpDisplay> {
     super.dispose();
   }
 
+  /// Starts a periodic timer that refreshes the display every second.
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateCode();
     });
   }
 
+  /// Updates the [_currentCode] and [_remainingSeconds] by querying the [TotpService].
   void _updateCode() {
     final code = TotpService.generateCode(
       widget.secret,
@@ -70,11 +96,12 @@ class _TotpDisplayState extends State<TotpDisplay> {
     });
   }
 
+  /// Copies the current TOTP code to the system clipboard and provides visual feedback.
   void _copyCode() {
     Clipboard.setData(ClipboardData(text: _currentCode));
     setState(() => _copied = true);
 
-    // Reset copied state after 2 seconds
+    // Reset the 'copied' state after a short delay
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() => _copied = false);
@@ -83,6 +110,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
 
     widget.onCopy?.call();
 
+    // Show a success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(
@@ -103,10 +131,13 @@ class _TotpDisplayState extends State<TotpDisplay> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate progress for the circular indicator
+    // Calculate progress for the circular countdown indicator
     final progress = _remainingSeconds / widget.period;
+    
+    // Determine if the code is about to expire (less than 5 seconds)
     final isUrgent = _remainingSeconds <= 5;
     
+    // Use an error color for urgent expiration states
     final accentColor = isUrgent ? MykiAppTheme.errorColor : MykiAppTheme.primaryColor;
 
     return Container(
@@ -134,7 +165,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                // Sleek circular countdown indicator
+                // Circular countdown indicator with central seconds text
                 SizedBox(
                   width: 56,
                   height: 56,
@@ -172,7 +203,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
                 ),
                 const SizedBox(width: 20),
                 
-                // Code display
+                // Code display area with issuer and account info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,7 +219,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
                           ),
                         ),
                       const SizedBox(height: 4),
-                      // Format code as "XXX XXX" for readability
+                      // Format code as "XXX XXX" for improved readability
                       Text(
                         _formatCode(_currentCode),
                         style: TextStyle(
@@ -215,7 +246,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
                   ),
                 ),
                 
-                // Premium Copy indicator
+                // Visual indicator for 'copy' status
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: 48,
@@ -242,6 +273,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
     );
   }
 
+  /// Helper to format the code string into groups of characters for easier reading.
   String _formatCode(String code) {
     if (code.length == 6) {
       return '${code.substring(0, 3)} ${code.substring(3)}';
@@ -252,7 +284,7 @@ class _TotpDisplayState extends State<TotpDisplay> {
   }
 }
 
-/// Compact TOTP display for inline use
+/// A compact version of the TOTP display, suitable for inline use or lists.
 class TotpDisplayCompact extends StatefulWidget {
   final String secret;
   final int digits;

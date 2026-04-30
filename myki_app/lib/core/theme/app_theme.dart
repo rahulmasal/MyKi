@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// A collection of raw colors and gradients used throughout the Myki application.
+///
+/// This class acts as a central repository for the brand's visual identity,
+/// ensuring consistency across different UI components.
 class MykiAppTheme {
+  // Private constructor to prevent instantiation.
   MykiAppTheme._();
 
   // Refined Premium Color Palette
@@ -20,7 +25,7 @@ class MykiAppTheme {
   static const Color textSecondary = Color(0xFF64748B); // Slate 500
   static const Color textHint = Color(0xFF94A3B8); // Slate 400
 
-  // Gradients for premium feel
+  /// A linear gradient used for primary UI elements like large buttons or headers.
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
     begin: Alignment.topLeft,
@@ -28,14 +33,26 @@ class MykiAppTheme {
   );
 }
 
+/// The main theme configuration for the Myki Flutter application.
+///
+/// This class provides the [ThemeData] required by the [MaterialApp] widget,
+/// defining the look and feel of widgets like buttons, text fields, and cards.
 class AppTheme {
+  // Private constructor to prevent instantiation.
   AppTheme._();
 
+  /// Generates the light theme configuration for the application.
+  ///
+  /// This utilizes Material 3 design principles and customizes them with the
+  /// [MykiAppTheme] color palette and [GoogleFonts.inter] typography.
   static ThemeData get lightTheme {
     return ThemeData(
+      // Enables Material 3 design system.
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: MykiAppTheme.backgroundColor,
+      
+      // Defines the core color scheme using a seed color for harmonious generation.
       colorScheme: ColorScheme.fromSeed(
         seedColor: MykiAppTheme.primaryColor,
         brightness: Brightness.light,
@@ -44,6 +61,8 @@ class AppTheme {
         error: MykiAppTheme.errorColor,
         surface: MykiAppTheme.surfaceColor,
       ),
+
+      // Typography configuration using the Inter font family.
       textTheme: GoogleFonts.interTextTheme().copyWith(
         displayLarge: GoogleFonts.inter(
           fontSize: 36,
@@ -79,6 +98,8 @@ class AppTheme {
           color: MykiAppTheme.textSecondary,
         ),
       ),
+
+      // Global style for AppBars.
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: true,
@@ -92,6 +113,8 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: MykiAppTheme.textPrimary),
       ),
+
+      // Global style for ElevatedButtons.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
@@ -108,6 +131,8 @@ class AppTheme {
           ),
         ),
       ),
+
+      // Global style for TextButtons.
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: MykiAppTheme.primaryColor,
@@ -117,6 +142,8 @@ class AppTheme {
           ),
         ),
       ),
+
+      // Global style for InputFields (TextFields).
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: MykiAppTheme.surfaceColor,
@@ -143,6 +170,8 @@ class AppTheme {
           vertical: 18,
         ),
       ),
+
+      // Global style for Cards.
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(

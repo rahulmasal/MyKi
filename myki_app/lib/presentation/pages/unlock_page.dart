@@ -7,6 +7,10 @@ import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import 'vault_page.dart';
 
+/// The entry point page for authenticated access to the vault.
+///
+/// It requires the user to unlock the vault using either a master password
+/// or biometric authentication (if available and enabled).
 class UnlockPage extends StatefulWidget {
   const UnlockPage({super.key});
 
@@ -15,7 +19,10 @@ class UnlockPage extends StatefulWidget {
 }
 
 class _UnlockPageState extends State<UnlockPage> {
+  // Controller for the master password input field
   final _passwordController = TextEditingController();
+  
+  // Controls visibility of the password characters
   bool _obscurePassword = true;
 
   @override
@@ -24,12 +31,14 @@ class _UnlockPageState extends State<UnlockPage> {
     super.dispose();
   }
 
+  /// Attempts to unlock the vault using the provided password.
   void _unlock() {
     context.read<AuthBloc>().add(
       AuthUnlockWithPassword(_passwordController.text),
     );
   }
 
+  /// Attempts to unlock the vault using biometric authentication.
   void _unlockWithBiometric() {
     context.read<AuthBloc>().add(AuthUnlockWithBiometric());
   }
@@ -37,12 +46,15 @@ class _UnlockPageState extends State<UnlockPage> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
+      // Listen for authentication state changes to navigate or show errors
       listener: (context, state) {
         if (state is AuthAuthenticated) {
+          // Navigate to the main vault page upon successful authentication
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const VaultPage()),
           );
         } else if (state is AuthError) {
+          // Display error messages (e.g., incorrect password) in a snackbar
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message), 
@@ -63,7 +75,7 @@ class _UnlockPageState extends State<UnlockPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Premium Logo/Icon Container
+                  // Premium Logo/Icon Container with gradient and shadow
                   Container(
                     width: 120,
                     height: 120,
@@ -88,7 +100,7 @@ class _UnlockPageState extends State<UnlockPage> {
                   ),
                   const SizedBox(height: 48),
                   
-                  // Titles
+                  // Welcome Titles
                   Text(
                     'Welcome Back',
                     style: Theme.of(context).textTheme.displayMedium,
@@ -104,7 +116,7 @@ class _UnlockPageState extends State<UnlockPage> {
                   ),
                   const SizedBox(height: 48),
                   
-                  // Password Input
+                  // Password Input Field
                   Container(
                     decoration: BoxDecoration(
                       boxShadow: [
@@ -144,7 +156,7 @@ class _UnlockPageState extends State<UnlockPage> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Unlock Button
+                  // Unlock Action Button
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       final isLoading = state is AuthLoading;
@@ -173,7 +185,7 @@ class _UnlockPageState extends State<UnlockPage> {
                     },
                   ),
                   
-                  // Biometric section
+                  // Biometric Unlock Section (only shown if available)
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       if (state is AuthLocked && state.biometricAvailable) {
@@ -181,6 +193,7 @@ class _UnlockPageState extends State<UnlockPage> {
                           padding: const EdgeInsets.only(top: 32.0),
                           child: Column(
                             children: [
+                              // Visual separator
                               Row(
                                 children: [
                                   const Expanded(child: Divider()),
@@ -198,6 +211,8 @@ class _UnlockPageState extends State<UnlockPage> {
                                 ],
                               ),
                               const SizedBox(height: 24),
+                              
+                              // Biometric tap target
                               Material(
                                 color: Colors.transparent,
                                 child: InkWell(

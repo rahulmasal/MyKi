@@ -7,14 +7,23 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'sync_service.dart';
 import 'package:cryptography/cryptography.dart';
 
-/// Device pairing info encoded in QR code
+/// Represents the data structure for device pairing information encoded within a QR code.
+///
+/// This class handles the serialization and deserialization of pairing data,
+/// including cryptographic signatures to ensure authenticity.
 class DevicePairingInfo {
+  /// Unique identifier for the device.
   final String deviceId;
+  /// Human-readable name of the device.
   final String deviceName;
+  /// Base64 encoded public key for secure communication.
   final String publicKey;
+  /// URL of the relay server used for initial signaling.
   final String relayServer;
+  /// Epoch timestamp when the pairing info was generated.
   final int timestamp;
-  final String? signature; // Ed25519 signature
+  /// Ed25519 signature to verify that the data hasn't been tampered with.
+  final String? signature;
 
   DevicePairingInfo({
     required this.deviceId,
@@ -25,6 +34,7 @@ class DevicePairingInfo {
     this.signature,
   });
 
+  /// Converts the pairing info to a JSON map.
   Map<String, dynamic> toJson() => {
     'deviceId': deviceId,
     'deviceName': deviceName,
@@ -34,6 +44,7 @@ class DevicePairingInfo {
     if (signature != null) 'signature': signature,
   };
 
+  /// Creates a [DevicePairingInfo] instance from a JSON map.
   factory DevicePairingInfo.fromJson(Map<String, dynamic> json) {
     return DevicePairingInfo(
       deviceId: json['deviceId'] as String,
@@ -45,8 +56,10 @@ class DevicePairingInfo {
     );
   }
 
+  /// Encodes the pairing info as a Base64 string for QR code representation.
   String toBase64() => base64Encode(utf8.encode(jsonEncode(toJson())));
 
+  /// Decodes a Base64 string back into a [DevicePairingInfo] instance.
   static DevicePairingInfo? fromBase64(String data) {
     try {
       final json = jsonDecode(utf8.decode(base64Decode(data)));
@@ -56,24 +69,32 @@ class DevicePairingInfo {
     }
   }
 
-  /// Get data that should be signed (excludes the signature field itself)
+  /// Retrieves the raw bytes that are subject to cryptographic signing.
+  ///
+  /// This excludes the signature field itself and ensures consistent key ordering.
   List<int> getSigningData() {
     final map = toJson();
     map.remove('signature');
-    // Sort keys for consistent hashing/signing
+    // Sort keys for consistent hashing/signing regardless of map insertion order.
     final sortedKeys = map.keys.toList()..sort();
     final sortedMap = {for (var k in sortedKeys) k: map[k]};
     return utf8.encode(jsonEncode(sortedMap));
   }
 }
 
-/// Service for device pairing via QR codes
+/// Service responsible for managing the device pairing workflow via QR codes.
+///
+/// It leverages the [SyncService] for identity and secure transport, and
+/// provides UI components for scanning and displaying pairing data.
 class DevicePairingService extends ChangeNotifier {
+  // Reference to the sync service for device identity and signing capabilities.
   final SyncService _syncService;
 
   DevicePairingService(this._syncService);
 
-  /// Generate a signed QR code data string for this device
+  /// Generates a signed Base64 string containing this device's pairing information.
+  ///
+  /// This data is what gets encoded into the QR code shown to other devices.
   Future<String> generatePairingQRData() async {
     final info = DevicePairingInfo(
       deviceId: _syncService.deviceId,
@@ -83,7 +104,7 @@ class DevicePairingService extends ChangeNotifier {
       timestamp: DateTime.now().millisecondsSinceEpoch,
     );
     
-    // Sign the info
+    // Cryptographically sign the pairing info using the device's private key.
     final signature = await _syncService.signData(info.getSigningData());
     
     final signedInfo = DevicePairingInfo(
@@ -98,7 +119,9 @@ class DevicePairingService extends ChangeNotifier {
     return signedInfo.toBase64();
   }
 
-  /// Widget to display QR code for other devices to scan
+  /// Builds a widget that displays a QR code for this device.
+  ///
+  /// Other devices can scan this QR code to initiate a pairing request.
   Widget buildPairingQRWidget({double size = 250}) {
     return FutureBuilder<String>(
       future: generatePairingQRData(),
@@ -152,23 +175,28 @@ class DevicePairingService extends ChangeNotifier {
     );
   }
 
-  /// Scan QR code and initiate pairing
+  /// Processes raw QR code data and returns a verified [DevicePairingInfo] if valid.
+  ///
+  /// This method performs several security checks:
+  /// 1. Verifies the digital signature using the sender's public key.
+  /// 2. Validates the timestamp to prevent replay attacks.
+  /// 3. Ensures the device isn't trying to pair with itself.
   Future<DevicePairingInfo?> scanPairingQR(String data) async {
     final pairingInfo = DevicePairingInfo.fromBase64(data);
     if (pairingInfo == null || pairingInfo.signature == null) return null;
 
-    // Verify signature
+    // Verify that the signature is valid for the given data and public key.
     final isValid = await _verifySignature(pairingInfo);
     if (!isValid) return null;
 
-    // Validate timestamp (reject if older than 5 minutes)
+    // Validate timestamp (reject if older than 5 minutes) to ensure freshness.
     final now = DateTime.now().millisecondsSinceEpoch;
     const fiveMinutes = 5 * 60 * 1000;
     if (now - pairingInfo.timestamp > fiveMinutes) {
       return null;
     }
 
-    // Don't pair with yourself
+    // Safety check: Don't pair with yourself.
     if (pairingInfo.deviceId == _syncService.deviceId) {
       return null;
     }
@@ -176,6 +204,7 @@ class DevicePairingService extends ChangeNotifier {
     return pairingInfo;
   }
 
+  /// Verifies the Ed25519 signature of the pairing info.
   Future<bool> _verifySignature(DevicePairingInfo info) async {
     try {
       final algorithm = Ed25519();
@@ -197,13 +226,16 @@ class DevicePairingService extends ChangeNotifier {
     }
   }
 
-  /// Initiate secure pairing with scanned device
+  /// Initiates a secure pairing request with a remote device.
+  ///
+  /// This generates a session key and uses the [SyncService] to send the request
+  /// through the relay server.
   Future<bool> initiatePairing(DevicePairingInfo remoteDevice) async {
     try {
-      // Generate session key for this pairing
+      // Generate a one-time session key for this pairing handshake.
       final sessionKey = _generateSessionKey();
 
-      // Send pairing request via relay
+      // Send pairing request via the relay signaling server.
       final success = await _syncService.connectDevice(
         remoteDevice.deviceId,
         remoteDevice.publicKey,
@@ -211,7 +243,7 @@ class DevicePairingService extends ChangeNotifier {
       );
 
       if (success) {
-        // Store paired device info
+        // Persistently store the paired device info if the request was sent successfully.
         await _syncService.savePairedDevice(remoteDevice);
       }
 
@@ -221,8 +253,8 @@ class DevicePairingService extends ChangeNotifier {
     }
   }
 
+  /// Generates a cryptographically secure random session key.
   String _generateSessionKey() {
-    // Generate cryptographically secure random session key
     final random = math.Random.secure();
     final values = Uint8List(32);
     for (int i = 0; i < 32; i++) {
@@ -232,9 +264,11 @@ class DevicePairingService extends ChangeNotifier {
   }
 }
 
-/// Widget for scanning QR codes to pair devices
+/// A full-screen widget that provides a camera interface for scanning QR codes.
 class QRScannerWidget extends StatefulWidget {
+  /// Callback triggered when a QR code is successfully scanned.
   final Function(String) onQRScanned;
+  /// Optional callback for when the scanner is closed without a scan.
   final VoidCallback? onClose;
 
   const QRScannerWidget({super.key, required this.onQRScanned, this.onClose});
@@ -244,7 +278,9 @@ class QRScannerWidget extends StatefulWidget {
 }
 
 class _QRScannerWidgetState extends State<QRScannerWidget> {
+  // Controller for the camera/scanning logic.
   MobileScannerController? _controller;
+  // Flag to prevent multiple scans in quick succession.
   bool _hasScanned = false;
 
   @override
@@ -263,6 +299,7 @@ class _QRScannerWidgetState extends State<QRScannerWidget> {
     super.dispose();
   }
 
+  /// Handles the detection of a barcode/QR code.
   void _onDetect(BarcodeCapture capture) {
     if (_hasScanned) return;
 
@@ -299,8 +336,9 @@ class _QRScannerWidgetState extends State<QRScannerWidget> {
             child: Stack(
               alignment: Alignment.center,
               children: [
+                // The live camera feed for scanning.
                 MobileScanner(controller: _controller, onDetect: _onDetect),
-                // Scan overlay
+                // Visual overlay to help the user frame the QR code.
                 Container(
                   width: 250,
                   height: 250,
@@ -315,6 +353,7 @@ class _QRScannerWidgetState extends State<QRScannerWidget> {
               ],
             ),
           ),
+          // Informational area at the bottom of the scanner.
           Container(
             padding: const EdgeInsets.all(24),
             color: Colors.grey[100],
@@ -341,10 +380,13 @@ class _QRScannerWidgetState extends State<QRScannerWidget> {
   }
 }
 
-/// Widget for displaying this device's QR code
+/// A simple widget for displaying a device's QR code and name.
 class MyDeviceQRWidget extends StatelessWidget {
+  /// Name of the device to display.
   final String deviceName;
+  /// Raw data to be encoded in the QR code.
   final String qrData;
+  /// Visual size of the QR code.
   final double size;
 
   const MyDeviceQRWidget({

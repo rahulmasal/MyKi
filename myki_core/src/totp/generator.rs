@@ -11,24 +11,31 @@ type HmacSha1 = Hmac<Sha1>;
 type HmacSha256 = Hmac<Sha256>;
 type HmacSha512 = Hmac<Sha512>;
 
-/// TOTP algorithm
+/// Supported hashing algorithms for TOTP generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Algorithm {
+    /// The most common algorithm used for TOTP (RFC 6238).
     #[default]
     SHA1,
+    /// A more modern and secure hashing algorithm.
     SHA256,
+    /// The strongest hashing algorithm supported, providing the most bits of security.
     SHA512,
 }
 
-/// TOTP configuration
+/// Configuration settings for generating TOTP codes.
 #[derive(Debug, Clone)]
 pub struct TotpConfig {
+    /// The hashing algorithm to use (usually SHA1).
     pub algorithm: Algorithm,
+    /// The number of digits in the generated code (usually 6).
     pub digits: u8,
+    /// How many seconds a code remains valid (usually 30).
     pub period: u64,
 }
 
 impl Default for TotpConfig {
+    /// Provides the standard RFC 6238 settings: SHA1, 6 digits, 30-second period.
     fn default() -> Self {
         Self {
             algorithm: Algorithm::SHA1,
@@ -38,29 +45,34 @@ impl Default for TotpConfig {
     }
 }
 
-/// TOTP errors
+/// Errors that can occur during TOTP generation or validation.
 #[derive(Error, Debug)]
 pub enum TotpError {
+    /// The provided secret key is not a valid Base32 string.
     #[error("Invalid secret: {0}")]
     InvalidSecret(String),
     
+    /// An error occurred during the cryptographic hashing process.
     #[error("Generation failed: {0}")]
     Generation(String),
 }
 
-/// TOTP generator
+/// A stateless generator for Time-based One-Time Passwords (TOTP).
 pub struct Totp;
 
 impl Totp {
-    /// Generate a TOTP code
+    /// Generates a TOTP code for a specific point in time.
+    /// 
+    /// # Parameters
+    /// - `secret`: The Base32-encoded secret key shared between the user and the service.
+    /// - `config`: Configuration for the generation (algorithm, digits, period).
+    /// - `timestamp`: The Unix timestamp for which to generate the code.
     pub fn generate(secret: &str, config: &TotpConfig, timestamp: i64) -> Result<String, TotpError> {
-        // Decode base32 secret
+        // ... internal implementation ...
         let secret_bytes = Self::decode_base32(secret)?;
         
-        // Calculate time counter
         let counter = (timestamp / config.period as i64) as u64;
         
-        // Generate HOTP with counter
         let code = match config.algorithm {
             Algorithm::SHA1 => Self::hotp_sha1(&secret_bytes, counter, config.digits)?,
             Algorithm::SHA256 => Self::hotp_sha256(&secret_bytes, counter, config.digits)?,
@@ -70,7 +82,7 @@ impl Totp {
         Ok(code)
     }
     
-    /// Generate TOTP for current time
+    /// Generates a TOTP code for the current system time.
     pub fn now(secret: &str, config: &TotpConfig) -> Result<String, TotpError> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -80,7 +92,7 @@ impl Totp {
         Self::generate(secret, config, timestamp)
     }
     
-    /// Get remaining seconds until code expires
+    /// Calculates the number of seconds remaining until the current TOTP code expires.
     pub fn remaining_seconds(config: &TotpConfig) -> u64 {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -90,8 +102,12 @@ impl Totp {
         config.period - (now % config.period)
     }
     
-    /// Verify a TOTP code (with tolerance for clock drift)
+    /// Verifies if a given TOTP code is valid for the current time.
+    /// 
+    /// # Parameters
+    /// - `tolerance`: The number of previous/future time periods to check to account for clock drift.
     pub fn verify(secret: &str, config: &TotpConfig, code: &str, tolerance: u64) -> bool {
+        // ...
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()

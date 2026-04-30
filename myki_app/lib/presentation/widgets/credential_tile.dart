@@ -4,9 +4,17 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../blocs/vault/vault_state.dart';
 
+/// A widget that displays a single credential entry in a list.
+///
+/// Shows the credential's title and username, and provides quick actions
+/// like copying the password to the clipboard or deleting the entry.
 class CredentialTile extends StatelessWidget {
   final Credential credential;
+  
+  /// Callback triggered when the tile is tapped (e.g., to view details).
   final VoidCallback onTap;
+  
+  /// Callback triggered when the delete action is initiated.
   final VoidCallback onDelete;
 
   const CredentialTile({
@@ -40,7 +48,7 @@ class CredentialTile extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Premium Icon Container
+                // Premium Icon Container: Displays the first letter of the title
                 Container(
                   width: 56,
                   height: 56,
@@ -74,7 +82,7 @@ class CredentialTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 
-                // Title and username
+                // Title and username text section
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +112,7 @@ class CredentialTile extends StatelessWidget {
                   ),
                 ),
                 
-                // Quick Actions
+                // Quick Actions: Copy and Delete
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -131,6 +139,7 @@ class CredentialTile extends StatelessWidget {
     );
   }
 
+  /// Copies the credential's password to the system clipboard and shows a confirmation snackbar.
   void _copyPassword(BuildContext context) {
     Clipboard.setData(ClipboardData(text: credential.password));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -152,6 +161,7 @@ class CredentialTile extends StatelessWidget {
   }
 }
 
+/// A private internal helper widget for the action buttons in the [CredentialTile].
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;

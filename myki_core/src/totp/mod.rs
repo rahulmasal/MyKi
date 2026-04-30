@@ -1,6 +1,7 @@
-//! TOTP Module
-//! 
 //! Time-based One-Time Password implementation (RFC 6238)
+//! 
+//! This module provides functionality for generating and verifying TOTP codes,
+//! which are commonly used for Two-Factor Authentication (2FA).
 
 pub mod generator;
 

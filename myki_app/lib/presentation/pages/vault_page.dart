@@ -11,6 +11,10 @@ import '../widgets/credential_tile.dart';
 import 'add_credential_page.dart';
 import 'unlock_page.dart';
 
+/// The main dashboard page displaying the user's stored credentials.
+///
+/// Provides functionality for searching, adding, and deleting credentials,
+/// as well as locking the vault.
 class VaultPage extends StatefulWidget {
   const VaultPage({super.key});
 
@@ -19,11 +23,13 @@ class VaultPage extends StatefulWidget {
 }
 
 class _VaultPageState extends State<VaultPage> {
+  // Controller for the search input field
   final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    // Trigger initial loading of credentials when the page is first created
     context.read<VaultBloc>().add(VaultLoadCredentials());
   }
 
@@ -33,6 +39,8 @@ class _VaultPageState extends State<VaultPage> {
     super.dispose();
   }
 
+  /// Locks the vault and redirects the user back to the [UnlockPage].
+  /// Uses a fade transition for a smooth security-focused UX.
   void _lock() {
     context.read<AuthBloc>().add(AuthLock());
     Navigator.of(context).pushReplacement(
@@ -45,6 +53,7 @@ class _VaultPageState extends State<VaultPage> {
     );
   }
 
+  /// Navigates to the [AddCredentialPage] to allow the user to create a new entry.
   void _addCredential() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AddCredentialPage()),
@@ -59,7 +68,7 @@ class _VaultPageState extends State<VaultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Custom Premium App Bar
+            // Custom Header / App Bar section
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 16, 12),
               child: Row(
@@ -79,6 +88,7 @@ class _VaultPageState extends State<VaultPage> {
                       ),
                     ],
                   ),
+                  // Lock button
                   Container(
                     decoration: BoxDecoration(
                       color: MykiAppTheme.surfaceColor,
@@ -102,7 +112,7 @@ class _VaultPageState extends State<VaultPage> {
               ),
             ),
             
-            // Floating Search Bar
+            // Search Bar with shadow and interactive suffix icon
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
               child: Container(
@@ -133,8 +143,9 @@ class _VaultPageState extends State<VaultPage> {
                         : null,
                   ),
                   onChanged: (value) {
+                    // Update the search query in the BLoC on every character change
                     context.read<VaultBloc>().add(VaultSearchCredentials(value));
-                    setState(() {}); // Update suffix icon visibility
+                    setState(() {}); // Refresh UI to toggle clear button visibility
                   },
                 ),
               ),
@@ -142,7 +153,7 @@ class _VaultPageState extends State<VaultPage> {
             
             const SizedBox(height: 8),
 
-            // Credentials List
+            // Main Credential List area
             Expanded(
               child: BlocBuilder<VaultBloc, VaultState>(
                 builder: (context, state) {
@@ -151,6 +162,7 @@ class _VaultPageState extends State<VaultPage> {
                   }
                   
                   if (state is VaultError) {
+                    // Error state with illustrative icon and message
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -185,6 +197,7 @@ class _VaultPageState extends State<VaultPage> {
                       return _buildEmptyState(state.searchQuery.isEmpty);
                     }
                     
+                    // List of credentials using a modern tile design
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
                       physics: const BouncingScrollPhysics(),
@@ -196,7 +209,7 @@ class _VaultPageState extends State<VaultPage> {
                           child: CredentialTile(
                             credential: credential,
                             onTap: () {
-                              // View details
+                              // Action for viewing details or editing
                             },
                             onDelete: () => _showDeleteConfirmation(credential.id),
                           ),
@@ -211,6 +224,7 @@ class _VaultPageState extends State<VaultPage> {
           ],
         ),
       ),
+      // Action button to add new items
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addCredential,
         backgroundColor: MykiAppTheme.primaryColor,
@@ -229,6 +243,7 @@ class _VaultPageState extends State<VaultPage> {
     );
   }
 
+  /// Builds a visual state for when no credentials are found or the vault is empty.
   Widget _buildEmptyState(bool isCompletelyEmpty) {
     return Center(
       child: Column(
@@ -264,6 +279,7 @@ class _VaultPageState extends State<VaultPage> {
     );
   }
 
+  /// Displays a confirmation dialog before permanently deleting a credential.
   void _showDeleteConfirmation(String credentialId) {
     showModalBottomSheet(
       context: context,
@@ -278,6 +294,7 @@ class _VaultPageState extends State<VaultPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Drag handle
               Container(
                 width: 48,
                 height: 4,

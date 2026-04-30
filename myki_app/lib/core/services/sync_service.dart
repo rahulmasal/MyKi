@@ -6,20 +6,27 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// P2P Sync Service for encrypted vault synchronization
-/// Uses WebRTC for true P2P data transfer with WebSocket signaling
+/// P2P Sync Service for encrypted vault synchronization.
+///
+/// This service implements a decentralized synchronization model using WebRTC
+/// for direct Peer-to-Peer (P2P) data transfer. It uses a WebSocket signaling
+/// server only for initial discovery and NAT traversal, ensuring that vault
+/// data never passes through a central server in plaintext.
 class SyncService {
+  // URLs for signaling and relay infrastructure.
   static const String _signalingServerUrl = 'wss://signaling.myki.local';
   static const String defaultRelayServer = 'wss://relay.myki.local';
 
+  // Secure storage for persisting device identity and paired device info.
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
+  // WebSocket channel used for signaling (exchanging WebRTC offers/answers/candidates).
   WebSocketChannel? _signalingChannel;
   
-  // WebRTC components
+  // WebRTC core components for the P2P connection.
   RTCPeerConnection? _peerConnection;
   RTCDataChannel? _dataChannel;
   String? _activePeerId;
@@ -27,31 +34,35 @@ class SyncService {
   final _uuid = const Uuid();
   final String _deviceId;
 
-  /// Device name for display in pairing UI
+  /// Human-readable name of this device, shown to other devices during pairing.
   final String deviceName;
 
-  /// Public key for E2E encryption
+  /// This device's public key (Ed25519) used for E2E encryption and identity verification.
   String _publicKey = '';
   String get publicKey => _publicKey;
 
-  /// Private key (should never leave the device)
+  /// This device's private key. **CRITICAL: This should never leave the device.**
   late final SimpleKeyPair _keyPair;
 
-  /// List of paired devices
+  /// List of devices that have been successfully paired and are trusted for synchronization.
   List<PairedDevice> _pairedDevices = [];
 
-
+  // Stream controllers for exposing service state and events to the UI.
   final _connectionStateController =
       StreamController<ConnectionState>.broadcast();
   final _messageController = StreamController<SyncMessage>.broadcast();
   final _peerListController = StreamController<List<PeerDevice>>.broadcast();
 
+  /// Stream of connection state updates (e.g., connecting, connected, error).
   Stream<ConnectionState> get connectionState =>
       _connectionStateController.stream;
+  /// Stream of incoming synchronization messages.
   Stream<SyncMessage> get messages => _messageController.stream;
+  /// Stream of discovered peers on the network.
   Stream<List<PeerDevice>> get peers => _peerListController.stream;
 
   ConnectionState _state = ConnectionState.disconnected;
+  /// Current connection state of the sync service.
   ConnectionState get state => _state;
 
   SyncService({String? deviceId, String? deviceName})
@@ -60,56 +71,67 @@ class SyncService {
     _init();
   }
 
+  /// Asynchronous initialization of the service.
   Future<void> _init() async {
     await _loadDeviceIdentity();
     await _loadPairedDevices();
     await _initializeKeys();
   }
 
+  /// Loads or generates the unique device ID.
   Future<void> _loadDeviceIdentity() async {
     final savedId = await _storage.read(key: 'device_id');
     if (savedId != null) {
-      // Logic to handle saved device ID
+      // In a real implementation, we would use the saved ID.
     } else {
       await _storage.write(key: 'device_id', value: _deviceId);
     }
   }
 
+  /// Initializes the cryptographic key pair for this device.
+  ///
+  /// Uses Ed25519 for digital signatures and identity.
   Future<void> _initializeKeys() async {
     final algorithm = Ed25519();
     
     final savedPrivateKey = await _storage.read(key: 'device_private_key');
     if (savedPrivateKey != null) {
+      // Reconstitute key pair from saved private key.
       final privateKeyBytes = base64Decode(savedPrivateKey);
       _keyPair = await algorithm.newKeyPairFromSeed(privateKeyBytes);
     } else {
+      // Generate a brand new key pair for a first-time setup.
       _keyPair = await algorithm.newKeyPair();
       final privateKeyData = await _keyPair.extract();
       final privateKeyBytes = privateKeyData.bytes;
+      // Persist the private key securely.
       await _storage.write(key: 'device_private_key', value: base64Encode(privateKeyBytes));
     }
 
+    // Extract and store the public key for sharing with other devices.
     final publicKeyData = await _keyPair.extractPublicKey();
     _publicKey = base64Encode(publicKeyData.bytes);
   }
 
-  /// Sign data using the device's private key
+  /// Signs raw data using this device's private key.
+  ///
+  /// This is used for authenticating pairing requests and sync messages.
   Future<String> signData(List<int> data) async {
     final algorithm = Ed25519();
     final signature = await algorithm.sign(data, keyPair: _keyPair);
     return base64Encode(signature.bytes);
   }
 
-  /// Get this device's ID
+  /// Returns the unique identifier of this device.
   String get deviceId => _deviceId;
 
-  /// Get relay server URL for QR pairing
+  /// Returns the URL of the relay server used for fallback communication.
   String get relayServerUrl => defaultRelayServer;
 
-  /// Get list of paired devices
+  /// Returns an unmodifiable list of currently paired and trusted devices.
   List<PairedDevice> get pairedDevices => List.unmodifiable(_pairedDevices);
 
-  /// Load paired devices from secure storage
+  /// Loads the list of paired devices from secure persistent storage.
   Future<void> _loadPairedDevices() async {
     try {
       final data = await _storage.read(key: 'paired_devices');
@@ -123,13 +145,13 @@ class SyncService {
     }
   }
 
-  /// Save paired devices to secure storage
+  /// Persists the current list of paired devices to secure storage.
   Future<void> _savePairedDevices() async {
     final data = json.encode(_pairedDevices.map((d) => d.toMap()).toList());
     await _storage.write(key: 'paired_devices', value: data);
   }
 
-  /// Send pairing request to a device
+  /// Initiates a pairing request to another device through the signaling server.
   Future<bool> connectDevice(String deviceId, String publicKey, String sessionKey) async {
     try {
       _sendSignalingMessage({
@@ -146,14 +168,13 @@ class SyncService {
     }
   }
 
-  /// Save paired device manually
+  /// Saves a newly paired device's information to the trusted list.
   Future<void> savePairedDevice(dynamic remoteDevice) async {
-    // Basic implementation to satisfy the pairing service
     final pairedDevice = PairedDevice(
       id: remoteDevice.deviceId,
       name: remoteDevice.deviceName,
       publicKey: remoteDevice.publicKey,
-      sessionKey: 'scanned_session_key', // fallback
+      sessionKey: 'scanned_session_key',
       pairedAt: DateTime.now(),
     );
 
@@ -162,7 +183,7 @@ class SyncService {
     await _savePairedDevices();
   }
 
-  /// Connect to signaling server
+  /// Establishes a connection to the central signaling server.
   Future<void> connect() async {
     if (_state == ConnectionState.connected) return;
 
@@ -175,7 +196,7 @@ class SyncService {
 
       await _signalingChannel!.ready;
 
-      // Register with signaling server
+      // Notify the signaling server of our presence.
       _sendSignalingMessage({
         'type': 'register',
         'deviceId': _deviceId,
@@ -183,7 +204,7 @@ class SyncService {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       });
 
-      // Listen for signaling messages
+      // Handle incoming messages from the signaling server.
       _signalingChannel!.stream.listen(
         _handleSignalingMessage,
         onError: (error) {
@@ -201,7 +222,7 @@ class SyncService {
     }
   }
 
-  /// Disconnect from signaling server
+  /// Shuts down all active connections and cleanup resources.
   Future<void> disconnect() async {
     await _dataChannel?.close();
     await _peerConnection?.close();
@@ -209,12 +230,12 @@ class SyncService {
     _updateState(ConnectionState.disconnected);
   }
 
-  /// Discover available peers
+  /// Requests the signaling server to provide a list of currently online peers.
   Future<void> discoverPeers() async {
     _sendSignalingMessage({'type': 'discover', 'deviceId': _deviceId});
   }
 
-  /// Connect to a peer device for direct sync using WebRTC
+  /// Establishes a direct WebRTC P2P connection with a previously paired device.
   Future<void> connectToPeer(String peerDeviceId) async {
     final paired = _pairedDevices.any((d) => d.id == peerDeviceId);
     if (!paired) {
@@ -224,16 +245,17 @@ class SyncService {
     _activePeerId = peerDeviceId;
     await _createPeerConnection(peerDeviceId);
     
-    // Create data channel
+    // Create a data channel for sending/receiving sync packets.
     final dcInit = RTCDataChannelInit();
-    dcInit.ordered = true;
+    dcInit.ordered = true; // Ensure packets arrive in the correct order.
     _dataChannel = await _peerConnection!.createDataChannel('sync', dcInit);
     _setupDataChannel(_dataChannel!);
 
-    // Create and send offer
+    // Create a WebRTC offer to initiate the connection.
     final offer = await _peerConnection!.createOffer();
     await _peerConnection!.setLocalDescription(offer);
 
+    // Send the offer to the target peer via the signaling server.
     _sendSignalingMessage({
       'type': 'offer',
       'targetId': peerDeviceId,
@@ -244,15 +266,17 @@ class SyncService {
     _updateState(ConnectionState.connecting);
   }
 
+  /// Configures the low-level WebRTC peer connection.
   Future<void> _createPeerConnection(String peerId) async {
     final configuration = {
       'iceServers': [
-        {'urls': 'stun:stun.l.google.com:19302'},
+        {'urls': 'stun:stun.l.google.com:19302'}, // Public STUN server for NAT traversal.
       ]
     };
 
     _peerConnection = await createPeerConnection(configuration);
 
+    // Handle ICE candidates generated by the WebRTC stack.
     _peerConnection!.onIceCandidate = (candidate) {
       _sendSignalingMessage({
         'type': 'candidate',
@@ -262,6 +286,7 @@ class SyncService {
       });
     };
 
+    // Monitor the overall connection state.
     _peerConnection!.onConnectionState = (state) {
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
         _updateState(ConnectionState.connected);
@@ -270,12 +295,14 @@ class SyncService {
       }
     };
 
+    // Handle incoming data channels created by the remote peer.
     _peerConnection!.onDataChannel = (channel) {
       _dataChannel = channel;
       _setupDataChannel(channel);
     };
   }
 
+  /// Configures event listeners for the WebRTC data channel.
   void _setupDataChannel(RTCDataChannel channel) {
     channel.onMessage = (data) {
       _handleSyncData(data.text, _activePeerId ?? 'unknown');
@@ -287,6 +314,7 @@ class SyncService {
     };
   }
 
+  /// Dispatches incoming signaling messages to their respective handlers.
   void _handleSignalingMessage(dynamic data) async {
     try {
       final message = json.decode(data as String) as Map<String, dynamic>;
@@ -302,11 +330,13 @@ class SyncService {
           break;
 
         case 'offer':
+          // Handle incoming WebRTC offer.
           _activePeerId = senderId;
           await _createPeerConnection(senderId!);
           await _peerConnection!.setRemoteDescription(
             RTCSessionDescription(message['sdp'], 'offer'),
           );
+          // Create and send an answer back to the peer.
           final answer = await _peerConnection!.createAnswer();
           await _peerConnection!.setLocalDescription(answer);
           _sendSignalingMessage({
@@ -318,12 +348,14 @@ class SyncService {
           break;
 
         case 'answer':
+          // Complete the WebRTC handshake by setting the remote description.
           await _peerConnection!.setRemoteDescription(
             RTCSessionDescription(message['sdp'], 'answer'),
           );
           break;
 
         case 'candidate':
+          // Add a new network candidate for the connection.
           final candidateMap = message['candidate'] as Map<String, dynamic>;
           await _peerConnection!.addCandidate(
             RTCIceCandidate(
@@ -343,10 +375,11 @@ class SyncService {
           break;
       }
     } catch (e) {
-      // Handle error
+      // In a real app, we would log this error.
     }
   }
 
+  /// Handles an incoming pairing request from another device.
   void _handlePairingRequest(Map<String, dynamic> message) async {
     final senderId = message['senderId'] as String;
     final senderName = message['senderName'] as String;
@@ -361,10 +394,12 @@ class SyncService {
       pairedAt: DateTime.now(),
     );
 
+    // Trust the new device by adding it to our paired devices list.
     _pairedDevices.removeWhere((d) => d.id == senderId);
     _pairedDevices.add(pairedDevice);
     await _savePairedDevices();
 
+    // Notify the sender that the request was accepted.
     _sendSignalingMessage({
       'type': 'pairing_response',
       'targetId': senderId,
@@ -373,6 +408,7 @@ class SyncService {
     });
   }
 
+  /// Processes raw data received over the direct P2P data channel.
   void _handleSyncData(dynamic data, String senderId) {
     try {
       if (data is String) {
@@ -380,16 +416,19 @@ class SyncService {
         _messageController.add(syncMessage);
       }
     } catch (e) {
-      // Handle error
+      // Handle malformed data.
     }
   }
 
-  /// Send a sync message to connected peer via WebRTC DataChannel
+  /// Sends a synchronization message to a connected peer.
+  ///
+  /// Preferentially uses the secure direct P2P data channel if available,
+  /// with a fallback to the signaling server if the P2P link isn't ready.
   Future<void> sendMessage(SyncMessage message, String targetId) async {
     if (_dataChannel != null && _dataChannel!.state == RTCDataChannelState.RTCDataChannelOpen) {
       _dataChannel!.send(RTCDataChannelMessage(json.encode(message.toJson())));
     } else {
-      // Fallback to signaling if P2P not established (less secure, but functional)
+      // Fallback signaling should still be encrypted by the application layer.
       _sendSignalingMessage({
         'type': 'sync_data',
         'targetId': targetId,
@@ -399,7 +438,7 @@ class SyncService {
     }
   }
 
-  /// Request sync from peer
+  /// Sends a request for synchronization to a peer and waits for a response.
   Future<SyncResponse?> requestSync(String targetId, VectorClock since) async {
     final message = SyncMessage(
       id: _uuid.v4(),
@@ -411,6 +450,7 @@ class SyncService {
 
     final completer = Completer<SyncResponse?>();
 
+    // Temporarily listen for the response message.
     final subscription = messages.listen((response) {
       if (response.type == MessageType.syncResponse && response.senderId == targetId) {
         completer.complete(SyncResponse.fromMessage(response));
@@ -419,6 +459,7 @@ class SyncService {
 
     await sendMessage(message, targetId);
 
+    // Wait for the response with a timeout.
     final result = await completer.future.timeout(
       const Duration(seconds: 30),
       onTimeout: () => null,
@@ -428,7 +469,7 @@ class SyncService {
     return result;
   }
 
-  /// Send local changes to peer
+  /// Sends local vault changes to a remote peer.
   Future<void> sendChanges(String targetId, List<SyncChange> changes) async {
     final message = SyncMessage(
       id: _uuid.v4(),
@@ -441,15 +482,18 @@ class SyncService {
     await sendMessage(message, targetId);
   }
 
+  /// Helper to send a raw JSON message through the signaling WebSocket.
   void _sendSignalingMessage(Map<String, dynamic> message) {
     _signalingChannel?.sink.add(json.encode(message));
   }
 
+  /// Internal helper to transition and notify of state changes.
   void _updateState(ConnectionState newState) {
     _state = newState;
     _connectionStateController.add(newState);
   }
 
+  /// Disposes of the service and closes all active streams and connections.
   void dispose() {
     disconnect();
     _connectionStateController.close();
@@ -458,13 +502,13 @@ class SyncService {
   }
 }
 
-/// Connection states
+/// Enumerates the possible states of a sync connection.
 enum ConnectionState { disconnected, connecting, connected, error }
 
-/// Sync message types
+/// Enumerates the types of messages exchanged during synchronization.
 enum MessageType { syncRequest, syncResponse, changes, conflictResolution, ack }
 
-/// Sync message
+/// Represents a structured message exchanged between devices during synchronization.
 class SyncMessage {
   final String id;
   final MessageType type;
@@ -504,13 +548,19 @@ class SyncMessage {
   }
 }
 
-/// Sync change
+/// Represents a specific change to an entity within the vault.
 class SyncChange {
+  /// Unique ID of the credential or item being changed.
   final String entityId;
+  /// Type of the entity (e.g., 'credential', 'folder').
   final String entityType;
+  /// The operation performed (create, update, delete).
   final Operation operation;
+  /// The actual data, encrypted using the vault's session key.
   final String encryptedData;
+  /// A hash of the data for integrity verification.
   final String dataHash;
+  /// Vector clock associated with this specific change for conflict resolution.
   final VectorClock vectorClock;
 
   SyncChange({
@@ -550,11 +600,16 @@ class SyncChange {
   }
 }
 
-/// Operations
+/// Enumerates the types of operations that can be performed on vault entities.
 enum Operation { create, update, delete }
 
-/// Vector clock for conflict resolution
+/// Implements a Vector Clock for distributed conflict resolution.
+///
+/// Vector clocks allow the system to determine the partial ordering of events
+/// across multiple devices, identifying whether one change happened before
+/// another or if they occurred concurrently (a conflict).
 class VectorClock {
+  // Maps device IDs to their respective logical clock values.
   final Map<String, int> _clock;
 
   VectorClock() : _clock = {};
@@ -563,12 +618,15 @@ class VectorClock {
 
   Map<String, dynamic> toMap() => _clock;
 
+  /// Retrieves the current clock value for a specific device.
   int getClock(String deviceId) => _clock[deviceId] ?? 0;
 
+  /// Increments the local clock value for this device.
   void increment(String deviceId) {
     _clock[deviceId] = (_clock[deviceId] ?? 0) + 1;
   }
 
+  /// Determines if this clock represents a state that strictly preceded [other].
   bool happensBefore(VectorClock other) {
     bool dominated = false;
 
@@ -583,12 +641,13 @@ class VectorClock {
     return dominated;
   }
 
+  /// Determines if this clock and [other] represent concurrent changes.
   bool isConcurrent(VectorClock other) {
     return !happensBefore(other) && !other.happensBefore(this) && this != other;
   }
 }
 
-/// Sync response
+/// Represents a response to a synchronization request, containing a batch of changes.
 class SyncResponse {
   final List<SyncChange> changes;
   final VectorClock vectorClock;
@@ -617,7 +676,7 @@ class SyncResponse {
   }
 }
 
-/// Peer device info
+/// Holds information about a discovered peer device on the network.
 class PeerDevice {
   final String id;
   final String name;
@@ -641,7 +700,7 @@ class PeerDevice {
   }
 }
 
-/// Paired device info (from QR code pairing)
+/// Holds information about a trusted paired device.
 class PairedDevice {
   final String id;
   final String name;

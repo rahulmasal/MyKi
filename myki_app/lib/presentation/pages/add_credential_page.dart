@@ -5,6 +5,10 @@ import '../../core/theme/app_theme.dart';
 import '../blocs/vault/vault_bloc.dart';
 import '../blocs/vault/vault_event.dart';
 
+/// A page that provides a form to add a new credential to the vault.
+///
+/// Users can enter details like title, username, password, URL, and notes.
+/// It also includes a password generation feature.
 class AddCredentialPage extends StatefulWidget {
   const AddCredentialPage({super.key});
 
@@ -13,16 +17,22 @@ class AddCredentialPage extends StatefulWidget {
 }
 
 class _AddCredentialPageState extends State<AddCredentialPage> {
+  // Key to manage and validate the form state
   final _formKey = GlobalKey<FormState>();
+  
+  // Controllers for each input field to manage text state
   final _titleController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _urlController = TextEditingController();
   final _notesController = TextEditingController();
+  
+  // Controls visibility of the password in the input field
   bool _obscurePassword = true;
 
   @override
   void dispose() {
+    // Ensure all controllers are disposed to prevent memory leaks
     _titleController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -31,6 +41,8 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
     super.dispose();
   }
 
+  /// Validates the form and dispatches a [VaultAddCredential] event to the [VaultBloc].
+  /// Pops the page from the navigation stack upon successful submission.
   void _save() {
     if (_formKey.currentState!.validate()) {
       context.read<VaultBloc>().add(
@@ -46,10 +58,13 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
     }
   }
 
+  /// Generates a strong, random password and updates the password controller.
+  /// Briefly reveals the password for the user to see what was generated.
   void _generatePassword() {
     const length = 20;
     const chars =
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*';
+    // Using simple pseudo-random generation based on timestamp
     final random = DateTime.now().millisecondsSinceEpoch;
     String password = '';
     for (var i = 0; i < length; i++) {
@@ -108,7 +123,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               const SizedBox(height: 32),
 
-              // Title
+              // Title Input
               _buildInputLabel('Title'),
               TextFormField(
                 controller: _titleController,
@@ -126,7 +141,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               const SizedBox(height: 24),
 
-              // Username
+              // Username Input
               _buildInputLabel('Username or Email'),
               TextFormField(
                 controller: _usernameController,
@@ -145,7 +160,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               const SizedBox(height: 24),
 
-              // Password
+              // Password Input with Generator
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -191,7 +206,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               const SizedBox(height: 24),
 
-              // URL
+              // Optional URL Input
               _buildInputLabel('Website URL (Optional)'),
               TextFormField(
                 controller: _urlController,
@@ -204,7 +219,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               const SizedBox(height: 24),
 
-              // Notes
+              // Optional Notes Input
               _buildInputLabel('Notes (Optional)'),
               TextFormField(
                 controller: _notesController,
@@ -220,7 +235,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               const SizedBox(height: 48),
 
-              // Save button
+              // Form submission button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -242,6 +257,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
     );
   }
 
+  /// Helper method to build consistent input labels
   Widget _buildInputLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),

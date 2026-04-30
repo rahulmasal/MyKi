@@ -9,21 +9,37 @@ use aes_gcm::{
 };
 use rand::RngCore;
 
-/// AES-256-GCM cipher
+/// An implementation of AES-256 in Galois/Counter Mode (GCM).
+/// 
+/// GCM is an "Authenticated Encryption" mode, meaning it provides both
+/// confidentiality (hiding the data) and authenticity (verifying it hasn't changed).
 pub struct Aes256Gcm {
+    /// The underlying hardware-accelerated or software implementation of AES-GCM.
     cipher: AesGcm,
 }
 
 impl Aes256Gcm {
-    /// Create new cipher with vault key
+    /// Initializes a new AES-256-GCM cipher using the provided vault key.
+    /// 
+    /// # Parameters
+    /// - `key`: The 256-bit key used for encryption and decryption.
     pub fn new(key: &VaultKey) -> Self {
         let cipher = AesGcm::new_from_slice(key.as_bytes())
             .expect("Invalid key length");
         Self { cipher }
     }
     
-    /// Encrypt data
+    /// Encrypts the given plaintext and optionally binds it to additional authenticated data (AAD).
+    /// 
+    /// # Parameters
+    /// - `plaintext`: The secret data to be encrypted.
+    /// - `aad`: Publicly visible data that should be protected against tampering, but not hidden.
+    /// 
+    /// # Returns
+    /// - `Ok(EncryptedData)` containing a random nonce and the ciphertext.
     pub fn encrypt(&self, plaintext: &[u8], aad: Option<&[u8]>) -> Result<EncryptedData, CryptoError> {
+        // Generate a unique 12-byte nonce for this specific encryption operation.
+        // It is CRITICAL that a nonce is never reused with the same key.
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
@@ -41,7 +57,15 @@ impl Aes256Gcm {
         Ok(EncryptedData::new(nonce_bytes.to_vec(), ciphertext))
     }
     
-    /// Decrypt data
+    /// Decrypts the given `EncryptedData` and verifies its integrity.
+    /// 
+    /// # Parameters
+    /// - `encrypted`: The nonce and ciphertext to decrypt.
+    /// - `aad`: The same additional authenticated data used during encryption.
+    /// 
+    /// # Returns
+    /// - `Ok(Vec<u8>)` containing the original plaintext if decryption and verification succeed.
+    /// - `Err(CryptoError)` if the data was tampered with or the wrong key was used.
     pub fn decrypt(&self, encrypted: &EncryptedData, aad: Option<&[u8]>) -> Result<Vec<u8>, CryptoError> {
         let nonce = Nonce::from_slice(&encrypted.nonce);
 

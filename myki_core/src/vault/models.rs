@@ -5,26 +5,39 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Credential entry
+/// Represents a complete credential entry in the vault.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credential {
+    /// Unique identifier for the credential (UUID).
     pub id: String,
+    /// A user-friendly title for the entry (e.g., "Google Account").
     pub title: String,
+    /// The username or email associated with the account.
     pub username: String,
+    /// The plaintext password (encrypted when stored in the database).
     pub password: String,
+    /// Optional URL for the service's login page.
     pub url: Option<String>,
+    /// Optional free-form notes.
     pub notes: Option<String>,
+    /// Optional ID of the folder this credential belongs to.
     pub folder_id: Option<String>,
+    /// A list of tags for searching and organization.
     pub tags: Vec<String>,
+    /// Whether this credential is marked as a favorite.
     pub favorite: bool,
+    /// Unix timestamp of when the entry was created.
     pub created_at: i64,
+    /// Unix timestamp of the last time the entry was modified.
     pub updated_at: i64,
+    /// Unix timestamp of when the credential was last used.
     pub last_used_at: Option<i64>,
+    /// The number of times this credential has been used/viewed.
     pub use_count: i64,
 }
 
 impl Credential {
-    /// Create a new credential
+    /// Creates a new `Credential` with a unique ID and current timestamps.
     pub fn new(title: String, username: String, password: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -48,7 +61,7 @@ impl Credential {
         }
     }
     
-    /// Create with all fields
+    /// Creates a new `Credential` with optional fields like URL and notes.
     pub fn new_full(
         title: String,
         username: String,
@@ -63,7 +76,7 @@ impl Credential {
     }
 }
 
-/// New credential (for creation)
+/// A structure used for creating new credentials, providing optional fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialNew {
     pub title: String,
@@ -77,6 +90,7 @@ pub struct CredentialNew {
 }
 
 impl From<CredentialNew> for Credential {
+    /// Converts a `CredentialNew` request into a full `Credential` object.
     fn from(new: CredentialNew) -> Self {
         let mut cred = Credential::new(new.title, new.username, new.password);
         cred.url = new.url;
@@ -88,7 +102,7 @@ impl From<CredentialNew> for Credential {
     }
 }
 
-/// Identity entry (personal info)
+/// Represents personal information entries (like address or email) in the vault.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Identity {
     pub id: String,
@@ -103,7 +117,7 @@ pub struct Identity {
 }
 
 impl Identity {
-    /// Create a new identity
+    /// Creates a new `Identity` with a unique ID.
     pub fn new(title: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -124,7 +138,7 @@ impl Identity {
     }
 }
 
-/// Secure note entry
+/// A simple text entry for storing sensitive notes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecureNote {
     pub id: String,
@@ -136,7 +150,7 @@ pub struct SecureNote {
 }
 
 impl SecureNote {
-    /// Create a new secure note
+    /// Creates a new `SecureNote` with a unique ID.
     pub fn new(title: String, content: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -154,7 +168,7 @@ impl SecureNote {
     }
 }
 
-/// Folder for organizing items
+/// A container used for organizing other vault items.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
     pub id: String,
@@ -165,7 +179,7 @@ pub struct Folder {
 }
 
 impl Folder {
-    /// Create a new folder
+    /// Creates a new `Folder` with a unique ID.
     pub fn new(name: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -182,7 +196,7 @@ impl Folder {
     }
 }
 
-/// TOTP secret
+/// Stores the secret key and configuration for a TOTP generator.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TotpSecret {
     pub id: String,
@@ -197,7 +211,7 @@ pub struct TotpSecret {
 }
 
 impl TotpSecret {
-    /// Create a new TOTP secret
+    /// Creates a new `TotpSecret` with default RFC 6238 settings (SHA1, 6 digits, 30s).
     pub fn new(secret: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

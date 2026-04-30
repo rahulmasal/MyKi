@@ -9,16 +9,21 @@ import 'core/services/biometric_service.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/vault/vault_bloc.dart';
 
+/// The entry point of the Myki application.
+///
+/// This function initializes the Flutter framework, sets up system-level
+/// configurations, and provides the necessary BLoCs to the app.
 void main() async {
+  // Ensures that the Flutter engine is fully initialized before any asynchronous code runs.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set preferred orientations
+  // Set preferred orientations to portrait mode for a consistent user experience.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set system UI overlay style
+  // Set system UI overlay style to make the status bar transparent and use dark icons.
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -26,23 +31,30 @@ void main() async {
     ),
   );
 
-  // Initialize services
+  // Initialize core services that will be used across the application.
+  // VaultService handles secure storage and retrieval of user credentials.
   final vaultService = VaultService();
+  // BiometricService manages biometric authentication workflows.
   final biometricService = BiometricService();
+  // LocalAuthentication is a third-party plugin for device-level biometric checks.
   final localAuth = LocalAuthentication();
 
-  // Check biometric availability (passed to AuthBloc for initial state)
+  // Check biometric availability to inform the AuthBloc about the device's capabilities.
   final canCheckBiometrics = await localAuth.canCheckBiometrics;
   final isDeviceSupported = await localAuth.isDeviceSupported();
 
-  // Store for potential future use
+  // Logging biometric status for debugging purposes during initialization.
   debugPrint(
     'Biometric availability: $canCheckBiometrics, Device supported: $isDeviceSupported',
   );
 
+  // The runApp function starts the application by mounting the root widget.
+  // MultiBlocProvider is used to inject BLoCs at the top of the widget tree,
+  // making them accessible to all descendant widgets.
   runApp(
     MultiBlocProvider(
       providers: [
+        // AuthBloc manages the authentication state of the user (Locked vs. Unlocked).
         BlocProvider<AuthBloc>(
           create: (_) => AuthBloc(
             vaultService: vaultService,
@@ -50,6 +62,7 @@ void main() async {
             localAuth: localAuth,
           ),
         ),
+        // VaultBloc manages the state of the credential vault, such as the list of stored credentials.
         BlocProvider<VaultBloc>(create: (_) => VaultBloc()),
       ],
       child: const MykiApp(),

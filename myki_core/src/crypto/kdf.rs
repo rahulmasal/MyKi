@@ -8,20 +8,27 @@ use argon2::{
     Argon2,
 };
 
-/// Argon2 configuration
+/// Configuration parameters for the Argon2id key derivation function.
+/// 
+/// Argon2id is a modern, secure password hashing algorithm that is resistant to 
+/// side-channel attacks and GPU-based cracking.
 #[derive(Debug, Clone)]
 pub struct Argon2Config {
-    /// Memory cost in KiB (default: 64 MB)
+    /// The amount of memory used by the algorithm in KiB. 
+    /// Higher values increase the cost of hardware attacks.
     pub memory: u32,
-    /// Number of iterations
+    /// The number of passes over the memory. 
+    /// Higher values increase the time cost of the algorithm.
     pub iterations: u32,
-    /// Parallelism
+    /// The number of threads to use. 
+    /// This should generally be tuned to the target system's CPU cores.
     pub parallelism: u32,
-    /// Output length in bytes
+    /// The length of the generated key in bytes.
     pub output_len: usize,
 }
 
 impl Default for Argon2Config {
+    /// Provides recommended default settings for Argon2id.
     fn default() -> Self {
         Self {
             memory: 65536,   // 64 MiB
@@ -32,18 +39,28 @@ impl Default for Argon2Config {
     }
 }
 
-/// KDF configuration (for trait compatibility)
+/// A wrapper around `Argon2Config` for use with key derivation traits.
 #[derive(Default)]
 pub struct KdfConfig(pub Argon2Config);
 
 #[allow(clippy::derivable_impls)]
 impl KdfConfig {
+    /// Creates a new `KdfConfig` with the given Argon2 settings.
     pub fn new(config: Argon2Config) -> Self {
         Self(config)
     }
 }
 
-/// Derive a master key from a password using Argon2id
+/// Derives a `MasterKey` from a password and salt using the Argon2id algorithm.
+/// 
+/// # Parameters
+/// - `password`: The user's master password.
+/// - `salt`: A unique, random set of bytes used to make the hash unique even for common passwords.
+/// - `config`: Argon2 parameters (memory, iterations, etc.).
+/// 
+/// # Returns
+/// - `Ok(MasterKey)` containing the derived encryption and MAC keys.
+/// - `Err(CryptoError)` if derivation fails.
 pub fn derive_key(password: &str, salt: &[u8], config: &Argon2Config) -> Result<MasterKey, CryptoError> {
     let salt_string = SaltString::encode_b64(salt)
         .map_err(|e| CryptoError::KeyDerivation(e.to_string()))?;

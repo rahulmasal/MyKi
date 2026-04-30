@@ -5,21 +5,31 @@
 use crate::crypto::{VaultKey, MacKey};
 use rand::RngCore;
 
-/// Master key derived from password
+/// The root key for the entire vault, from which other specialized keys are derived.
+/// 
+/// In a password manager, the master key is derived from the user's master password.
+/// It is then split into separate keys for encryption and integrity to follow
+/// cryptographic best practices.
 pub struct MasterKey {
-    /// Vault encryption key (32 bytes)
+    /// The key used to encrypt and decrypt the actual data (AES-256).
     pub vault_key: VaultKey,
-    /// MAC key for integrity (32 bytes)
+    /// The key used to ensure the data hasn't been tampered with (MAC).
     pub mac_key: MacKey,
 }
 
 impl MasterKey {
-    /// Create master key from derived bytes
+    /// Creates a `MasterKey` by splitting 64 bytes of derived material into 
+    /// two 32-byte keys.
+    /// 
+    /// # Parameters
+    /// - `derived`: 64 bytes of raw key material (e.g., from Argon2id).
     pub fn from_derived(derived: [u8; 64]) -> Self {
         let mut vault_bytes = [0u8; 32];
         let mut mac_bytes = [0u8; 32];
         
+        // The first 32 bytes are for encryption
         vault_bytes.copy_from_slice(&derived[0..32]);
+        // The remaining 32 bytes are for integrity
         mac_bytes.copy_from_slice(&derived[32..64]);
         
         Self {
@@ -29,7 +39,11 @@ impl MasterKey {
     }
 }
 
-/// Generate a random salt
+/// Generates a unique, random 32-byte salt using a cryptographically secure 
+/// random number generator (CSPRNG).
+/// 
+/// A salt is used during key derivation to ensure that even if two users have
+/// the same password, their derived keys will be completely different.
 pub fn generate_salt() -> [u8; 32] {
     let mut salt = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut salt);

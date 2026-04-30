@@ -7,15 +7,25 @@ use crate::crypto::{MasterKey, Aes256Gcm, EncryptedData};
 use rusqlite::{Connection, params};
 use std::sync::Mutex;
 
-/// Encrypted vault database
+/// A secure, encrypted database for storing vault items.
+/// 
+/// This uses SQLite as the storage engine, but all sensitive data is encrypted
+/// using AES-256-GCM before being saved to the disk.
 pub struct VaultDatabase {
+    /// A thread-safe connection to the SQLite database.
     conn: Mutex<Connection>,
+    /// The cipher used for encrypting and decrypting data.
     cipher: Aes256Gcm,
 }
 
 impl VaultDatabase {
-    /// Create a new vault
+    /// Creates a new vault database file at the specified path and initializes the schema.
+    /// 
+    /// # Parameters
+    /// - `path`: The file system path where the database will be created.
+    /// - `master_key`: The key used to protect the vault.
     pub fn create(path: &str, master_key: &MasterKey) -> Result<Self, VaultError> {
+        // ... (connection and schema setup)
         let conn = Connection::open(path)
             .map_err(|e| VaultError::Database(e.to_string()))?;
         
@@ -76,7 +86,11 @@ impl VaultDatabase {
         })
     }
     
-    /// Open an existing vault
+    /// Opens an existing vault database file.
+    /// 
+    /// # Parameters
+    /// - `path`: The path to the existing database file.
+    /// - `master_key`: The key required to decrypt the vault contents.
     pub fn open(path: &str, master_key: &MasterKey) -> Result<Self, VaultError> {
         let conn = Connection::open(path)
             .map_err(|e| VaultError::Database(e.to_string()))?;
@@ -89,7 +103,9 @@ impl VaultDatabase {
         })
     }
     
-    /// Save a credential
+    /// Encrypts and saves a credential to the database.
+    /// 
+    /// If a credential with the same ID already exists, it will be replaced.
     pub fn save_credential(&self, credential: &Credential) -> Result<(), VaultError> {
         let json = serde_json::to_string(credential)
             .map_err(|e| VaultError::Encryption(e.to_string()))?;
@@ -108,7 +124,10 @@ impl VaultDatabase {
         Ok(())
     }
     
-    /// Get all credentials
+    /// Retrieves all credentials from the database, decrypting them in the process.
+    /// 
+    /// # Returns
+    /// - A list of decrypted `Credential` objects, sorted by their last update time.
     pub fn get_all_credentials(&self) -> Result<Vec<Credential>, VaultError> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -138,7 +157,7 @@ impl VaultDatabase {
         Ok(credentials)
     }
     
-    /// Delete a credential
+    /// Permanently removes a credential from the database.
     pub fn delete_credential(&self, id: &str) -> Result<(), VaultError> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -148,7 +167,7 @@ impl VaultDatabase {
         Ok(())
     }
     
-    /// Search credentials by title or username
+    /// Searches for credentials whose title, username, or URL matches the query string.
     pub fn search_credentials(&self, query: &str) -> Result<Vec<Credential>, VaultError> {
         let all = self.get_all_credentials()?;
         let query_lower = query.to_lowercase();
@@ -160,7 +179,7 @@ impl VaultDatabase {
         }).collect())
     }
     
-    /// Close the database
+    /// Closes the database connection.
     pub fn close(self) {
         drop(self);
     }
