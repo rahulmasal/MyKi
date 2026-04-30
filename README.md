@@ -191,10 +191,36 @@ flowchart TD
 ## 🚀 Quick Start
 
 ### Flutter Mobile App
-... [existing] ...
+
+```bash
+# Clone the repository
+git clone https://github.com/rahulmasal/MyKi.git
+cd MyKi/myki_app
+
+# Install dependencies
+flutter pub get
+
+# Run on iOS
+flutter run -d "iPhone 14 Pro"
+
+# Run on Android
+flutter run -d "Pixel 6"
+```
 
 ### Desktop App (Windows/macOS/Linux)
-... [existing] ...
+
+```bash
+cd MyKi/myki_extension/src-tauri
+
+# Install Rust dependencies
+cargo fetch
+
+# Development mode
+cargo tauri dev
+
+# Production build
+cargo tauri build
+```
 
 ### CLI Tool (Rust)
 

@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "myki_core",
+    "myki_cli",
+    "myki_extension/src-tauri",
+]
