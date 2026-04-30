@@ -13,9 +13,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/myki-password-manager?style=for-the-badge" alt="Stars">
-  <img src="https://img.shields.io/github/forks/myki-password-manager?style=for-the-badge" alt="Forks">
-  <img src="https://img.shields.io/github/issues/myki-password-manager?style=for-the-badge" alt="Issues">
+  <img src="https://img.shields.io/github/stars/rahulmasal/MyKi?style=for-the-badge" alt="Stars">
+  <img src="https://img.shields.io/github/forks/rahulmasal/MyKi?style=for-the-badge" alt="Forks">
+  <img src="https://img.shields.io/github/issues/rahulmasal/MyKi?style=for-the-badge" alt="Issues">
 </p>
 
 ---
@@ -237,7 +237,7 @@
 ```bash
 # Clone the repository
 git clone https://github.com/rahulmasal/MyKi.git
-cd myki/myki_app
+cd MyKi/myki_app
 
 # Install dependencies
 flutter pub get
@@ -252,7 +252,7 @@ flutter run -d "Pixel 6"
 ### Desktop App (Windows/macOS/Linux)
 
 ```bash
-cd myki/myki_extension/src-tauri
+cd MyKi/myki_extension/src-tauri
 
 # Install Rust dependencies
 cargo fetch
@@ -387,10 +387,10 @@ Built with ❤️ and a lot of ☕ by the open source community.
 
 ## 🔗 Links
 
-- 📘 [Documentation](https://docs.myki.app)
+- 📘 [Technical Specification](TECHNICAL_SPECIFICATION.md)
+- 🛡️ [Security Comparison](SECURITY_COMPARISON.md)
 - 💬 [Discord Community](https://discord.gg/myki)
 - 🐛 [Issue Tracker](https://github.com/rahulmasal/MyKi/issues)
-- 📖 [Contributing Guide](CONTRIBUTING.md)
 
 ---
 
@@ -400,6 +400,4 @@ Built with ❤️ and a lot of ☕ by the open source community.
   <sub>Myki - The Password Manager That Never Forgets</sub>
   <br>
   <sub>Made with ❤️ for the open source community</sub>
-</p>
-ub>
 </p>
