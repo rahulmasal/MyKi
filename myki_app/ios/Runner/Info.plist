@@ -47,6 +47,8 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Myki needs FaceID for secure vault unlocking.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

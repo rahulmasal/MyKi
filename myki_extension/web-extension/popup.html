@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Myki Popup</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img src="icons/icon48.png" alt="Myki Logo" class="logo">
+      <h1>Myki</h1>
+    </header>
+    
+    <div id="unlock-view" class="view">
+      <input type="password" id="master-password" placeholder="Master Password">
+      <button id="unlock-btn">Unlock Vault</button>
+    </div>
+
+    <div id="vault-view" class="view hidden">
+      <div class="search-box">
+        <input type="text" id="search" placeholder="Search accounts...">
+      </div>
+      <ul id="credential-list">
+        <!-- Credentials will be injected here -->
+      </ul>
+      <button id="lock-btn">Lock Vault</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

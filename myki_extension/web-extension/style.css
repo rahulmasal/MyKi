@@ -1,0 +1,99 @@
+body {
+  width: 320px;
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f4f9;
+  color: #333;
+}
+
+.container {
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  margin-right: 10px;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0;
+  color: #2c3e50;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hidden {
+  display: none;
+}
+
+input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+button {
+  padding: 10px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+
+.search-box {
+  margin-bottom: 10px;
+}
+
+#credential-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.credential-item {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.credential-item:hover {
+  background-color: #f0f7ff;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-info strong {
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.item-info span {
+  font-size: 12px;
+  color: #7f8c8d;
+}
