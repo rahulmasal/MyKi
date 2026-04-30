@@ -33,11 +33,13 @@ impl Default for Argon2Config {
 }
 
 /// KDF configuration (for trait compatibility)
+#[derive(Default)]
 pub struct KdfConfig(pub Argon2Config);
 
-impl Default for KdfConfig {
-    fn default() -> Self {
-        Self(Argon2Config::default())
+#[allow(clippy::derivable_impls)]
+impl KdfConfig {
+    pub fn new(config: Argon2Config) -> Self {
+        Self(config)
     }
 }
 

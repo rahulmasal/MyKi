@@ -1,6 +1,9 @@
 //! Vault management for Myki Extension
 //! Handles encrypted storage and retrieval of credentials
 
+#![allow(dead_code)]
+#![allow(clippy::too_many_arguments)]
+
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -10,19 +13,17 @@ use uuid::Uuid;
 use crate::crypto::{decrypt, encrypt, MasterKey};
 
 /// Vault state
+#[derive(Default)]
 pub struct Vault {
     pub is_unlocked: bool,
     pub connection: Option<Connection>,
     pub master_key: Option<MasterKey>,
 }
 
-impl Default for Vault {
-    fn default() -> Self {
-        Self {
-            is_unlocked: false,
-            connection: None,
-            master_key: None,
-        }
+#[allow(clippy::derivable_impls)]
+impl Vault {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 

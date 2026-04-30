@@ -1,6 +1,8 @@
 //! Tauri commands for browser extension
 //! Provides IPC interface between browser extension and native app
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 

@@ -12,17 +12,12 @@ type HmacSha256 = Hmac<Sha256>;
 type HmacSha512 = Hmac<Sha512>;
 
 /// TOTP algorithm
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Algorithm {
+    #[default]
     SHA1,
     SHA256,
     SHA512,
-}
-
-impl Default for Algorithm {
-    fn default() -> Self {
-        Algorithm::SHA1
-    }
 }
 
 /// TOTP configuration

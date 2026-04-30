@@ -1,6 +1,8 @@
 //! Cryptographic operations for Myki Extension
 //! Implements AES-256-GCM encryption with Argon2id key derivation
 
+#![allow(dead_code)]
+
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
@@ -158,8 +160,8 @@ pub fn generate_password(
     let mut random_bytes = [0u8; 64];
     OsRng.fill_bytes(&mut random_bytes);
     
-    for i in 0..length {
-        let idx = random_bytes[i] as usize % charset_bytes.len();
+    for item in random_bytes.iter().take(length) {
+        let idx = *item as usize % charset_bytes.len();
         password.push(charset_bytes[idx]);
     }
     

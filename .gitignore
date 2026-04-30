@@ -10,7 +10,7 @@ build/
 pubspec.lock
 
 # Rust
-/target/
+target/
 **/*.rs.bk
 Cargo.lock
 *.pdb

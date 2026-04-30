@@ -15,6 +15,7 @@ pub enum FfiError {
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn myki_derive_key(
     password: *const c_char,
     salt: *const c_char,
@@ -61,6 +62,7 @@ pub extern "C" fn myki_derive_key(
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn myki_encrypt(
     plaintext: *const c_char,
     key_b64: *const c_char,
@@ -112,6 +114,7 @@ pub extern "C" fn myki_encrypt(
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn myki_decrypt(
     encrypted_b64: *const c_char,
     key_b64: *const c_char,
@@ -172,6 +175,7 @@ pub extern "C" fn myki_decrypt(
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn myki_generate_totp(
     secret: *const c_char,
     out_code: *mut *mut c_char,
@@ -202,6 +206,7 @@ pub extern "C" fn myki_generate_totp(
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn myki_is_valid_base32(secret: *const c_char) -> bool {
     if secret.is_null() {
         return false;
@@ -225,6 +230,7 @@ pub extern "C" fn myki_is_valid_base32(secret: *const c_char) -> bool {
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn myki_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         unsafe {
