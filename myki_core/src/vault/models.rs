@@ -34,6 +34,8 @@ pub struct Credential {
     pub last_used_at: Option<i64>,
     /// The number of times this credential has been used/viewed.
     pub use_count: i64,
+    /// Optional list of secure file attachment IDs or paths.
+    pub attachments: Option<Vec<String>>,
 }
 
 impl Credential {
@@ -58,6 +60,7 @@ impl Credential {
             updated_at: now,
             last_used_at: None,
             use_count: 0,
+            attachments: None,
         }
     }
     
@@ -87,6 +90,7 @@ pub struct CredentialNew {
     pub folder_id: Option<String>,
     pub tags: Option<Vec<String>>,
     pub favorite: Option<bool>,
+    pub attachments: Option<Vec<String>>,
 }
 
 impl From<CredentialNew> for Credential {
@@ -98,6 +102,7 @@ impl From<CredentialNew> for Credential {
         cred.folder_id = new.folder_id;
         cred.tags = new.tags.unwrap_or_default();
         cred.favorite = new.favorite.unwrap_or(false);
+        cred.attachments = new.attachments;
         cred
     }
 }

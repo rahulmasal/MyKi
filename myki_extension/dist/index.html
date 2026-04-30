@@ -1,38 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Myki Extension</title>
-    <style>
-      body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        margin: 0;
-        background: #1a1a2e;
-        color: #eee;
-      }
-      .container {
-        text-align: center;
-        padding: 2rem;
-      }
-      h1 {
-        color: #4a9eff;
-        margin-bottom: 0.5rem;
-      }
-      p {
-        color: #888;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>🔐 Myki Extension</h1>
-      <p>Password Manager - Coming Soon</p>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Myki Desktop</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <img src="../icons/myki-logo.png" alt="Myki" width="48">
+            <h1>Myki Desktop Vault</h1>
+        </header>
+        <main id="auth-view">
+            <h2>Unlock Vault</h2>
+            <input type="password" id="master-password" placeholder="Master Password">
+            <button id="unlock-btn">Unlock</button>
+            <p id="error-msg" style="color: red; display: none;">Invalid password</p>
+        </main>
+        <main id="vault-view" style="display: none;">
+            <div class="toolbar">
+                <input type="text" id="search" placeholder="Search...">
+                <button id="add-btn">+ Add</button>
+            </div>
+            <ul id="credential-list"></ul>
+        </main>
     </div>
-  </body>
+    <script>
+        const { invoke } = window.__TAURI__.tauri;
+        
+        document.getElementById('unlock-btn').addEventListener('click', async () => {
+            const pwd = document.getElementById('master-password').value;
+            try {
+                // Assuming 'unlock_vault' command exists or we mock it
+                // await invoke('unlock_vault', { password: pwd });
+                document.getElementById('auth-view').style.display = 'none';
+                document.getElementById('vault-view').style.display = 'block';
+                loadCredentials();
+            } catch (e) {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        });
+
+        function loadCredentials() {
+            const list = document.getElementById('credential-list');
+            list.innerHTML = '<li>No credentials yet (Desktop prototype)</li>';
+        }
+    </script>
+</body>
 </html>
