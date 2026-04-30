@@ -12,7 +12,6 @@ pubspec.lock
 # Rust
 target/
 **/*.rs.bk
-Cargo.lock
 *.pdb
 
 # IDE
