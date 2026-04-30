@@ -6,9 +6,9 @@ description = "Secure CLI for Myki Password Manager"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 rpassword = "7.3"
-myki_core = { path = "../myki_core" }
+myki_core = { workspace = true }
 anyhow = "1.0"
 indicatif = "0.17"

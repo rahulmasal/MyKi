@@ -6,3 +6,16 @@ members = [
     "myki_cli",
     "myki_extension/src-tauri",
 ]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+sha2 = "0.10"
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+myki_core = { path = "myki_core" }
