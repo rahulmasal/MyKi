@@ -1318,22 +1318,24 @@ class CredentialFiller {
 
 ---
 
-## 8. Security Threat Model
+## 8. Security Threat Model & Failure Mode Analysis
 
 ### 8.1 Threat Categories
+... [Keep existing table] ...
 
-| Threat                 | Mitigation                                                              |
-| ---------------------- | ----------------------------------------------------------------------- |
-| **Device Theft**       | Master password + biometric required; auto-lock; remote wipe capability |
-| **Memory Attacks**     | Sensitive data cleared immediately after use; no logging of secrets     |
-| **Clipboard Attacks**  | Auto-clear after 30 seconds; warning on sensitive paste                 |
-| **Screen Recording**   | Blur in app switcher; no preview in notifications                       |
-| **Network Attacks**    | Zero-knowledge: server never sees plaintext; E2E encryption             |
-| **Social Engineering** | No password hints stored; user education                                |
-| **Brute Force**        | Argon2id with high memory/CPU cost; account lockout                     |
-| **Biometric Bypass**   | Biometric unlocks encrypted key, not raw vault                          |
+### 8.2 Detailed Failure Mode Analysis
+This section describes how the system handles critical failure scenarios to maintain data integrity and security.
 
-### 8.2 Security Checklist
+| Scenario | System Response | User Impact | Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Network Partition during P2P Sync** | Vector clocks track partial updates. Sync resumes from last known state when re-connected. | Temporary out-of-sync data. | CRDTs ensure eventually consistent state without manual resolution. |
+| **Local Device Loss** | Vault is inaccessible without Master Password or Biometric. | Data loss if no other paired devices exist. | **Emergency Access Protocol**: Use of the printed Recovery Kit to restore vault. |
+| **Biometric Database Update (OS-level)** | Key derived from biometric signature changes. | App requests Master Password to re-encrypt vault key. | Master Password remains the "Root of Trust". |
+| **Relay Server Breach** | Attacker sees only opaque, E2E encrypted blobs. | No data leak. | TLS 1.3 and E2E encryption (AES-256-GCM). |
+| **Simultaneous Concurrent Edits** | Vector clocks detect divergence. | App merges fields using CRDT rules (LWW). | User notified of auto-merge for high-conflict fields. |
+
+### 8.3 Security Checklist
+... [Keep existing checklist] ...
 
 - [ ] Master password never stored, only derived key hash
 - [ ] Argon2id with minimum 64MB memory, 3 iterations

@@ -169,6 +169,7 @@ flowchart TD
 | **Mobile** | iOS, Android | ✅ Done |
 | **Desktop** | Windows, macOS, Linux | ✅ Done |
 | **Extensions** | Chrome, Firefox, Edge, Safari | ✅ Done |
+| **CLI** | Rust Terminal Tool | ✅ Done |
 
 ---
 
@@ -178,6 +179,7 @@ flowchart TD
 | --------------- | ---------------------- | ---------------------------------- |
 | **Mobile UI**   | Flutter                | Cross-platform, native performance |
 | **Desktop UI**  | Tauri + HTML/CSS       | Lightweight, native feel           |
+| **CLI**         | Rust + Clap            | Blazing fast, technical access     |
 | **Core Crypto** | Rust                   | Memory-safe, high performance      |
 | **Encryption**  | AES-256-GCM + Argon2id | Industry standard                  |
 | **Database**    | SQLCipher              | Encrypted SQLite                   |
@@ -189,35 +191,16 @@ flowchart TD
 ## 🚀 Quick Start
 
 ### Flutter Mobile App
-
-```bash
-# Clone the repository
-git clone https://github.com/rahulmasal/MyKi.git
-cd MyKi/myki_app
-
-# Install dependencies
-flutter pub get
-
-# Run on iOS
-flutter run -d "iPhone 14 Pro"
-
-# Run on Android
-flutter run -d "Pixel 6"
-```
+... [existing] ...
 
 ### Desktop App (Windows/macOS/Linux)
+... [existing] ...
+
+### CLI Tool (Rust)
 
 ```bash
-cd MyKi/myki_extension/src-tauri
-
-# Install Rust dependencies
-cargo fetch
-
-# Development mode
-cargo tauri dev
-
-# Production build
-cargo tauri build
+cd MyKi/myki_cli
+cargo run -- --help
 ```
 
 ---
@@ -231,35 +214,30 @@ myki/
 ├── 📄 SECURITY_COMPARISON.md         # Security vs competitors
 ├── 📱 myki_app/                      # Flutter Mobile App
 ├── 🦀 myki_core/                     # Shared Rust Core
-└── 🖥️ myki_extension/                # Tauri Desktop App & Web-Ext
-```
-
----
-
-## 🗺️ Roadmap
-
-```text
-Phase 1 ✅ Core Vault
-Phase 2 ✅ Biometric Auth
-Phase 3 ✅ TOTP 2FA
-Phase 4 ✅ P2P Sync
-Phase 5 ✅ Browser Extension
-Phase 6 ✅ Desktop App
-Phase 7 ✅ Emergency Access
-Phase 8 ✅ Secure Attachments
+├── 🖥️ myki_extension/                # Tauri Desktop App & Web-Ext
+└── ⌨️ myki_cli/                      # Rust Command Line Tool
 ```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how you can help:
+We welcome contributions! To make it easier to get started, we've broken down our goals into small, actionable tasks:
 
-### 🌟 Areas Needing Help
-- 🧪 **Security Penetration Testing**: We need experts to try and break the P2P sync and vault encryption.
-- 🔧 **Rust Crypto Audit**: Professional review of our `myki_core` implementation.
-- 🎨 **Mobile UI/UX Refinement**: Making the Flutter app feel even more "native" and fluid.
-- 🚀 **Performance Optimization**: Tuning WebRTC throughput for large vault transfers.
+### 🌟 High-Impact Tasks (Beginner Friendly)
+- 🎨 **UX/UI**: Improve visual hierarchy of the "Favorites" list on Android.
+- 📝 **Docs**: Add inline documentation for the `P2P Sync` message protocol.
+- 🐞 **Fix**: Resolve "stray HTML tag" warnings in the WebExtension popup.
+
+### 🔧 Engineering Tasks
+- 🚀 **Performance**: Implement delta-compression for syncing very large vaults.
+- 🧪 **Testing**: Add integration tests for the `myki_cli` <-> `myki_core` interface.
+- 📱 **Native**: Optimize WebRTC stream management for intermittent mobile data.
+
+### 🛡️ Security & Trust
+- 🔎 **Audit**: Perform a manual review of the Argon2id parameter choices.
+- 🔐 **Hardening**: Implement SSL pinning for the optional P2P relay server.
+- 🧪 **Pen-Test**: Conduct a failure-mode analysis on WebRTC handshake hijacking.
 
 ```bash
 # 1. Fork the repository
