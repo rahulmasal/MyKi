@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Myki: P2P Vault",
+  "productName": "Myki P2P Vault",
   "version": "0.1.0",
   "identifier": "com.myki.extension",
   "build": {
