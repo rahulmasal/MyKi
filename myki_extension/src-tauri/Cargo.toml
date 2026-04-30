@@ -27,6 +27,7 @@ dirs = "5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 myki_core = { workspace = true }
+tracing-appender = "0.2.5"
 
 [features]
 default = ["custom-protocol"]
