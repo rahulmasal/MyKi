@@ -28,14 +28,33 @@
 
 ## ✨ Why Myki?
 
-| Feature               | Description                                         |
-| --------------------- | --------------------------------------------------- |
-| 🔐 **Zero-Knowledge** | Your passwords never leave your devices unencrypted |
-| 📡 **P2P Sync**       | Direct device-to-device sync via WebRTC             |
-| 🛡️ **Argon2id**       | Memory-hard encryption that defeats GPUs            |
-| 📱 **Cross-Platform** | iOS, Android, Desktop & Browser Extension           |
-| 🔑 **2FA Built-In**   | TOTP authenticator included                         |
-| 🌐 **Open Source**    | Community-audited security                          |
+Myki is built for those who refuse to trust the cloud with their most sensitive data. Unlike traditional managers, it combines **military-grade security** with **frictionless peer-to-peer syncing**.
+
+- 🔐 **Zero-Knowledge**: Your master password never leaves your brain; your vault never leaves your devices.
+- 📡 **P2P Sync**: Direct device-to-device communication via WebRTC. No central server to breach.
+- 🛡️ **Modern Crypto**: Powered by **Argon2id** (memory-hard KDF) and **AES-256-GCM** (authenticated encryption).
+- 🚀 **Native Performance**: Core logic written in **Rust** for maximum speed and memory safety.
+- 🌐 **Open Source**: Auditable, transparent, and community-driven.
+
+---
+
+## 📊 Offline Manager Comparison
+
+How Myki stacks up against the best "local-first" and offline password managers.
+
+| Feature               | Myki (P2P)      | KeePassXC       | Enpass          | Strongbox       |
+| --------------------- | --------------- | --------------- | --------------- | --------------- |
+| **Primary Storage**   | Local (Secure)  | Local (.kdbx)   | Local / Cloud   | Local / Cloud   |
+| **Sync Method**       | **Direct P2P**  | Manual / Plugin | Cloud Relay     | Cloud Relay     |
+| **Key Derivation**    | **Argon2id**    | Argon2id        | PBKDF2          | Argon2id        |
+| **Modern UI/UX**      | ✅ Yes          | ❌ Legacy       | ✅ Yes          | ✅ Yes (iOS)    |
+| **Browser Ext.**      | ✅ Native Rust  | ✅ Yes          | ✅ Yes          | ✅ Yes          |
+| **Mobile Biometrics** | ✅ Face/TouchID | ✅ Partial      | ✅ Yes          | ✅ Yes          |
+| **Native Core**       | **Rust**        | C++             | C++             | Swift           |
+| **Open Source**       | ✅ Yes          | ✅ Yes          | ❌ No           | ✅ Yes (Core)   |
+
+### **The Myki Advantage**
+While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpass** offers sync but relies on 3rd-party clouds (Dropbox/Google Drive) which increases your attack surface. **Myki** bridges this gap: the security of a completely offline manager with the convenience of an automated cloud manager.
 
 ---
 
