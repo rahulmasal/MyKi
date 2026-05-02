@@ -9,50 +9,104 @@ document.addEventListener('DOMContentLoaded', () => {
   const credentialList = document.getElementById('credential-list');
   const searchInput = document.getElementById('search');
 
-  // Sample data to simulate a decrypted vault
-  const sampleCredentials = [
-    { id: '1', title: 'GitHub', username: 'dev_user', url: 'github.com' },
-    { id: '2', title: 'Google', username: 'user@gmail.com', url: 'google.com' },
-    { id: '3', title: 'Twitter', username: '@myki_fan', url: 'twitter.com' },
-    { id: '4', title: 'LinkedIn', username: 'professional_dev', url: 'linkedin.com' }
-  ];
+  // Track vault lock state
+  let vaultUnlocked = false;
+  let credentials = [];
+
+  // Load credentials from storage or empty array
+  async function loadCredentials() {
+    try {
+      const result = await chrome.storage.local.get('credentials');
+      credentials = result.credentials || [];
+    } catch (error) {
+      console.error('Failed to load credentials:', error);
+      credentials = [];
+    }
+  }
 
   function renderCredentials(filter = '') {
     credentialList.innerHTML = '';
-    const filtered = sampleCredentials.filter(c => 
+
+    if (!vaultUnlocked) {
+      credentialList.innerHTML = '<li class="credential-item locked">Vault is locked</li>';
+      return;
+    }
+
+    const filtered = credentials.filter(c =>
       c.title.toLowerCase().includes(filter.toLowerCase()) ||
       c.username.toLowerCase().includes(filter.toLowerCase())
     );
+
+    if (filtered.length === 0) {
+      credentialList.innerHTML = '<li class="credential-item empty">No credentials found</li>';
+      return;
+    }
 
     filtered.forEach(c => {
       const li = document.createElement('li');
       li.className = 'credential-item';
       li.innerHTML = `
         <div class="item-info">
-          <strong>${c.title}</strong>
-          <span>${c.username}</span>
+          <strong>${escapeHtml(c.title)}</strong>
+          <span>${escapeHtml(c.username)}</span>
         </div>
       `;
       li.addEventListener('click', () => {
-        // Simulate copying password
-        console.log('Copying password for:', c.title);
-        alert(`Password for ${c.title} copied to clipboard (simulated)`);
+        // Copy password to clipboard
+        if (c.password) {
+          navigator.clipboard.writeText(c.password).then(() => {
+            alert(`Password for ${c.title} copied to clipboard`);
+          }).catch(err => {
+            console.error('Failed to copy:', err);
+          });
+        }
       });
       credentialList.appendChild(li);
     });
   }
 
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   // Handle Unlock
-  unlockBtn.addEventListener('click', () => {
+  unlockBtn.addEventListener('click', async () => {
     const password = masterPasswordInput.value;
-    if (password === 'password') { // Simple simulation
-      unlockView.classList.add('hidden');
-      vaultView.classList.remove('hidden');
-      renderCredentials();
-    } else {
-      alert('Invalid Master Password! (Try "password")');
+
+    if (!password) {
+      alert('Please enter your master password');
+      return;
+    }
+
+    // Attempt to validate master password via Tauri command
+    try {
+      // Check with backend - this would call the actual vault unlock
+      // For now, we'll require actual authentication
+      const isValid = await validateMasterPassword(password);
+
+      if (isValid) {
+        vaultUnlocked = true;
+        await loadCredentials();
+        unlockView.classList.add('hidden');
+        vaultView.classList.remove('hidden');
+        renderCredentials();
+      } else {
+        alert('Invalid Master Password');
+      }
+    } catch (error) {
+      console.error('Unlock error:', error);
+      alert('Failed to unlock vault. Please try again.');
     }
   });
+
+  async function validateMasterPassword(password) {
+    // This would communicate with the Tauri backend
+    // For now, return false to require proper authentication
+    // The actual implementation would call unlock_vault command
+    return false;
+  }
 
   // Handle Search
   searchInput.addEventListener('input', (e) => {
@@ -61,6 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Handle Lock
   lockBtn.addEventListener('click', () => {
+    vaultUnlocked = false;
+    credentials = [];
     unlockView.classList.remove('hidden');
     vaultView.classList.add('hidden');
     masterPasswordInput.value = '';

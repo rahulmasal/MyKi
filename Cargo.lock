@@ -2580,10 +2580,12 @@ name = "myki-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.21.7",
  "clap",
  "indicatif",
  "myki_core",
  "rpassword",
+ "rusqlite",
  "serde",
  "serde_json",
 ]

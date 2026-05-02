@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -20,7 +21,7 @@ class AddCredentialPage extends StatefulWidget {
 class _AddCredentialPageState extends State<AddCredentialPage> {
   // Key to manage and validate the form state
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers for each input field to manage text state
   final _titleController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -28,7 +29,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
   final _urlController = TextEditingController();
   final _notesController = TextEditingController();
   final _totpController = TextEditingController();
-  
+
   // Controls visibility of the password in the input field
   bool _obscurePassword = true;
 
@@ -55,7 +56,9 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
           password: _passwordController.text,
           url: _urlController.text.isEmpty ? null : _urlController.text,
           notes: _notesController.text.isEmpty ? null : _notesController.text,
-          totpSecret: _totpController.text.isEmpty ? null : _totpController.text,
+          totpSecret: _totpController.text.isEmpty
+              ? null
+              : _totpController.text,
         ),
       );
       Navigator.of(context).pop();
@@ -68,11 +71,11 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
     const length = 20;
     const chars =
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*';
-    // Using simple pseudo-random generation based on timestamp
-    final random = DateTime.now().millisecondsSinceEpoch;
+    // Using cryptographically secure random number generation
+    final random = Random.secure();
     String password = '';
     for (var i = 0; i < length; i++) {
-      password += chars[(random + i * 7) % chars.length];
+      password += chars[random.nextInt(chars.length)];
     }
     setState(() {
       _passwordController.text = password;
@@ -93,7 +96,10 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
             AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              title: const Text('Scan QR Code', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Scan QR Code',
+                style: TextStyle(color: Colors.white),
+              ),
               leading: IconButton(
                 icon: const Icon(Icons.close, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
@@ -130,7 +136,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
       if (result.startsWith('otpauth://')) {
         final uri = Uri.parse(result);
         secret = uri.queryParameters['secret'] ?? result;
-        
+
         // Also try to fill title and username if possible
         if (_titleController.text.isEmpty) {
           final label = Uri.decodeComponent(uri.pathSegments.last);
@@ -145,7 +151,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
           }
         }
       }
-      
+
       setState(() {
         _totpController.text = secret;
       });
@@ -255,7 +261,10 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'monospace',
+                ),
                 decoration: InputDecoration(
                   hintText: 'Enter password',
                   prefixIcon: const Icon(Icons.lock_outline_rounded),
@@ -300,7 +309,10 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               ),
               TextFormField(
                 controller: _totpController,
-                style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'monospace',
+                ),
                 decoration: const InputDecoration(
                   hintText: 'Enter secret key',
                   prefixIcon: Icon(Icons.vpn_key_outlined),
@@ -329,7 +341,9 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
                 decoration: const InputDecoration(
                   hintText: 'Additional information...',
                   prefixIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 60.0), // Align icon with top text
+                    padding: EdgeInsets.only(
+                      bottom: 60.0,
+                    ), // Align icon with top text
                     child: Icon(Icons.notes_rounded),
                   ),
                 ),
@@ -347,7 +361,9 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 4,
-                    shadowColor: MykiAppTheme.primaryColor.withValues(alpha: 0.5),
+                    shadowColor: MykiAppTheme.primaryColor.withValues(
+                      alpha: 0.5,
+                    ),
                   ),
                 ),
               ),

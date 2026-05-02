@@ -10,6 +10,9 @@ class TotpService {
   // Access to the Rust-based security core.
   static final _rustBridge = RustBridgeService();
 
+  // Track initialization state to avoid repeated initialization calls
+  static bool _initialized = false;
+
   /// Generates the current 6-digit TOTP code for a given secret.
   ///
   /// [secret] must be a valid Base32 encoded string.
@@ -21,14 +24,17 @@ class TotpService {
     int period = 30,
     int? timestamp,
   }) {
-    // Ensure the native library is loaded before use.
-    _rustBridge.initialize();
-    
+    // Ensure the native library is loaded before use (only once).
+    if (!_initialized) {
+      _rustBridge.initialize();
+      _initialized = true;
+    }
+
     // Normalize the secret (remove spaces, ensure uppercase).
     final cleanSecret = secret.toUpperCase().replaceAll(' ', '');
     // Call the Rust core to generate the code.
     final code = _rustBridge.generateTotp(cleanSecret);
-    
+
     // Return the code or a placeholder if generation fails.
     return code ?? '------';
   }

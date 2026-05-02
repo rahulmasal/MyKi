@@ -15,21 +15,22 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
 
 subprojects {
-    afterEvaluate {
-        if (project.hasProperty("android")) {
-            val android = project.extensions.getByName("android")
-            if (android is com.android.build.gradle.BaseExtension) {
-                if (android.namespace == null) {
-                    android.namespace = "com.myki.patch.${project.name.replace("-", "_").replace(":", "_")}"
+    // Patch namespace for plugins missing it (AGP 8.x compatibility)
+    if (project.name != "app") {
+        plugins.withId("com.android.library") {
+            extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+                if (namespace == null) {
+                    namespace = "com.myki.patch.${project.name.replace("-", "_").replace(":", "_")}"
                 }
             }
         }
     }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {

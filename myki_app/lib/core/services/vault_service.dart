@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:crypto/crypto.dart';
 import 'rust_bridge_service.dart';
 
 /// Vault Service - manages the security lifecycle of the user's credential vault.
@@ -48,10 +49,12 @@ class VaultService {
   /// 4. Auto-unlocking the vault by setting the session key.
   Future<void> createVault(String masterPassword) async {
     _rustBridge.initialize();
-    
+
     // Generate a cryptographically secure random salt.
     final random = Random.secure();
-    final saltBytes = Uint8List.fromList(List<int>.generate(32, (_) => random.nextInt(256)));
+    final saltBytes = Uint8List.fromList(
+      List<int>.generate(32, (_) => random.nextInt(256)),
+    );
     final saltB64 = base64Encode(saltBytes);
 
     // Derive the master key using the strong Argon2id KDF in the Rust core.
@@ -63,9 +66,10 @@ class VaultService {
 
     // Store a hash of the derived key to verify the master password on future unlocks
     // without storing the master password or the key itself.
-    final keyHash = base64Encode(utf8.encode(derivedKeyB64)); // Simplified for demonstration.
+    // Using SHA-256 for cryptographic hashing
+    final keyHash = sha256.convert(utf8.encode(derivedKeyB64)).toString();
     await _storage.write(key: 'vault_key_hash', value: keyHash);
-    
+
     // Set the session key to unlock the vault.
     _sessionKeyB64 = derivedKeyB64;
   }
@@ -75,7 +79,7 @@ class VaultService {
   /// Returns `true` if the password is correct and the vault was successfully unlocked.
   Future<bool> unlockVault(String masterPassword) async {
     _rustBridge.initialize();
-    
+
     // Retrieve the salt associated with this vault.
     final saltB64 = await _storage.read(key: 'vault_salt');
     if (saltB64 == null) return false;
@@ -85,7 +89,7 @@ class VaultService {
     if (derivedKeyB64 == null) return false;
 
     // Verify the derived key against the stored hash.
-    final keyHash = base64Encode(utf8.encode(derivedKeyB64));
+    final keyHash = sha256.convert(utf8.encode(derivedKeyB64)).toString();
     final storedHash = await _storage.read(key: 'vault_key_hash');
 
     if (keyHash == storedHash) {
@@ -93,7 +97,7 @@ class VaultService {
       _sessionKeyB64 = derivedKeyB64;
       return true;
     }
-    
+
     return false;
   }
 

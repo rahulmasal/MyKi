@@ -12,3 +12,5 @@ rpassword = "7.3"
 myki_core = { workspace = true }
 anyhow = "1.0"
 indicatif = "0.17"
+base64 = "0.21"
+rusqlite = { workspace = true }
