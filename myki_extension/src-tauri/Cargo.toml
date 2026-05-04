@@ -1,6 +1,6 @@
 [package]
 name = "myki-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Myki - Open Source Password Manager for Desktop"
 authors = ["Myki Team"]
 edition = "2021"
