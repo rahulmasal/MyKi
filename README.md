@@ -1,7 +1,7 @@
 # Myki - P2P Password Manager
 
 <p align="center">
-  <img src="assets/images/myki_white.jpg" width="200" alt="Myki Logo"/>
+  <img src="myki_app/assets/images/myki_white.jpg" width="200" alt="Myki Logo"/>
 </p>
 
 <p align="center">
@@ -17,6 +17,11 @@
 - [Projects](#projects)
 - [Security Model](#security-model)
 - [Getting Started](#getting-started)
+  - [Windows](#-windows)
+  - [macOS](#-macos)
+  - [Ubuntu / Linux](#-ubuntu--linux)
+  - [iOS (iPhone)](#-ios-iphone)
+  - [Android](#-android)
 - [Contributing](#contributing)
 
 ---
@@ -166,6 +171,188 @@ User Password ──► Derive Key ──► Hash Key ──► Store Hash
 - **Rust** 1.70+ (for building core)
 - **Flutter** 3.10+ (for mobile app)
 - **Android SDK** / **Xcode** (for mobile development)
+
+---
+
+### 🪟 Windows
+
+#### CLI Tool
+
+```powershell
+# Install via cargo (requires Rust)
+cargo install --git https://github.com/your-org/myki.git myki_cli
+
+# Or build from source
+git clone https://github.com/your-org/myki.git
+cd myki/myki_cli
+cargo build --release
+# Executable at: target/release/myki_cli.exe
+```
+
+#### Browser Extension
+
+1. Install [Rust](https://rustup.rs/)
+2. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+3. Clone and build:
+
+```powershell
+git clone https://github.com/your-org/myki.git
+cd myki/myki_extension
+cargo build --release
+```
+
+#### Mobile App (Android)
+
+1. Install [Flutter SDK](https://docs.flutter.dev/get-started/install/windows)
+2. Install [Android Studio](https://developer.android.com/studio)
+3. Build:
+
+```powershell
+cd myki/myki_app
+flutter build apk --release
+```
+
+---
+
+### 🍎 macOS
+
+#### CLI Tool
+
+```bash
+# Install via cargo (requires Rust)
+cargo install --git https://github.com/your-org/myki.git myki_cli
+
+# Or build from source
+git clone https://github.com/your-org/myki.git
+cd myki/myki_cli
+cargo build --release
+# Executable at: target/release/myki_cli
+```
+
+#### Browser Extension
+
+1. Install Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+2. Clone and build:
+
+```bash
+git clone https://github.com/your-org/myki.git
+cd myki/myki_extension
+cargo build --release
+```
+
+#### Mobile App (iOS)
+
+1. Install Flutter: `brew install flutter`
+2. Install Xcode from Mac App Store
+3. Build:
+
+```bash
+cd myki/myki_app
+flutter build ios --release
+```
+
+> **Note**: iOS builds require a Mac with Xcode.
+
+---
+
+### 🐧 Ubuntu / Linux
+
+#### CLI Tool
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+
+# Install via cargo
+cargo install --git https://github.com/your-org/myki.git myki_cli
+
+# Or build from source
+git clone https://github.com/your-org/myki.git
+cd myki/myki_cli
+cargo build --release
+# Executable at: target/release/myki_cli
+```
+
+#### Browser Extension
+
+1. Install dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+```
+
+2. Clone and build:
+
+```bash
+git clone https://github.com/your-org/myki.git
+cd myki/myki_extension
+cargo build --release
+```
+
+#### Mobile App (Android)
+
+```bash
+# Install Flutter
+sudo snap install flutter --classic
+
+# Install Android SDK
+sudo apt install -y android-sdk
+
+# Build
+cd myki/myki_app
+flutter build apk --release
+```
+
+---
+
+### 📱 iOS (iPhone)
+
+The Myki mobile app supports iOS devices.
+
+#### Requirements
+
+- Mac with Xcode 14+
+- Flutter 3.10+
+- Apple Developer Account (for device deployment)
+
+#### Building
+
+```bash
+cd myki/myki_app
+
+# List available simulators
+xcrun simctl list devices available
+
+# Run on simulator
+flutter run -d <simulator-id>
+
+# Build for App Store
+flutter build ipa --release
+```
+
+#### Installation on iPhone
+
+1. Open the `.ipa` file in Xcode
+2. Select your device as target
+3. Click "Run" or use "Product > Archive" for distribution
+
+> **Note**: Requires Apple Developer Program membership for testing on physical devices.
+
+---
+
+### 📱 Android
+
+Pre-built APK available in [`releases/`](releases/myki-android.apk)
+
+For manual installation on Android:
+
+1. Enable "Install from unknown sources" in Settings > Security
+2. Download the APK from releases
+3. Open and install
+
+---
 
 ### Building
 
