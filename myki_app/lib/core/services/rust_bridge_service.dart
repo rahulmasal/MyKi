@@ -1,5 +1,6 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 
 /// Error codes matching the Rust `FfiError` enum.
@@ -18,53 +19,60 @@ enum FfiError {
 // FFI Typedefs for Native and Dart signatures of Rust functions.
 // These define the function pointer types for communication between Dart and Rust.
 
-typedef MykiDeriveKeyNative = Int32 Function(
-  Pointer<Utf8> password,
-  Pointer<Utf8> salt,
-  Pointer<Pointer<Utf8>> outKeyB64,
-);
-typedef MykiDeriveKeyDart = int Function(
-  Pointer<Utf8> password,
-  Pointer<Utf8> salt,
-  Pointer<Pointer<Utf8>> outKeyB64,
-);
+typedef MykiDeriveKeyNative =
+    Int32 Function(
+      Pointer<Utf8> password,
+      Pointer<Utf8> salt,
+      Pointer<Pointer<Utf8>> outKeyB64,
+    );
+typedef MykiDeriveKeyDart =
+    int Function(
+      Pointer<Utf8> password,
+      Pointer<Utf8> salt,
+      Pointer<Pointer<Utf8>> outKeyB64,
+    );
 
-typedef MykiEncryptNative = Int32 Function(
-  Pointer<Utf8> plaintext,
-  Pointer<Utf8> keyB64,
-  Pointer<Pointer<Utf8>> outEncryptedB64,
-);
-typedef MykiEncryptDart = int Function(
-  Pointer<Utf8> plaintext,
-  Pointer<Utf8> keyB64,
-  Pointer<Pointer<Utf8>> outEncryptedB64,
-);
+typedef MykiEncryptNative =
+    Int32 Function(
+      Pointer<Utf8> plaintext,
+      Pointer<Utf8> keyB64,
+      Pointer<Pointer<Utf8>> outEncryptedB64,
+    );
+typedef MykiEncryptDart =
+    int Function(
+      Pointer<Utf8> plaintext,
+      Pointer<Utf8> keyB64,
+      Pointer<Pointer<Utf8>> outEncryptedB64,
+    );
 
-typedef MykiDecryptNative = Int32 Function(
-  Pointer<Utf8> encryptedB64,
-  Pointer<Utf8> keyB64,
-  Pointer<Pointer<Utf8>> outPlaintext,
-);
-typedef MykiDecryptDart = int Function(
-  Pointer<Utf8> encryptedB64,
-  Pointer<Utf8> keyB64,
-  Pointer<Pointer<Utf8>> outPlaintext,
-);
+typedef MykiDecryptNative =
+    Int32 Function(
+      Pointer<Utf8> encryptedB64,
+      Pointer<Utf8> keyB64,
+      Pointer<Pointer<Utf8>> outPlaintext,
+    );
+typedef MykiDecryptDart =
+    int Function(
+      Pointer<Utf8> encryptedB64,
+      Pointer<Utf8> keyB64,
+      Pointer<Pointer<Utf8>> outPlaintext,
+    );
 
-typedef MykiGenerateTotpNative = Int32 Function(
-  Pointer<Utf8> secret,
-  Pointer<Pointer<Utf8>> outCode,
-);
-typedef MykiGenerateTotpDart = int Function(
-  Pointer<Utf8> secret,
-  Pointer<Pointer<Utf8>> outCode,
-);
+typedef MykiGenerateTotpNative =
+    Int32 Function(Pointer<Utf8> secret, Pointer<Pointer<Utf8>> outCode);
+typedef MykiGenerateTotpDart =
+    int Function(Pointer<Utf8> secret, Pointer<Pointer<Utf8>> outCode);
 
 typedef MykiIsValidBase32Native = Uint8 Function(Pointer<Utf8> secret);
 typedef MykiIsValidBase32Dart = int Function(Pointer<Utf8> secret);
 
 typedef MykiFreeStringNative = Void Function(Pointer<Utf8> ptr);
 typedef MykiFreeStringDart = void Function(Pointer<Utf8> ptr);
+
+typedef MykiGenerateSaltNative =
+    Void Function(Pointer<Uint8> outSalt, Int32 length);
+typedef MykiGenerateSaltDart =
+    void Function(Pointer<Uint8> outSalt, int length);
 
 /// A service that bridges Flutter with the Rust-based security core via FFI.
 ///
@@ -79,7 +87,7 @@ class RustBridgeService {
 
   // The loaded dynamic library containing the Rust core.
   late DynamicLibrary _lib;
-  
+
   // Late-initialized Dart-side function handles for the Rust functions.
   late MykiDeriveKeyDart _deriveKey;
   late MykiEncryptDart _encrypt;
@@ -87,8 +95,10 @@ class RustBridgeService {
   late MykiGenerateTotpDart _generateTotp;
   late MykiIsValidBase32Dart _isValidBase32;
   late MykiFreeStringDart _freeString;
+  late MykiGenerateSaltDart _generateSalt;
 
   bool _isInitialized = false;
+
   /// Returns `true` if the native library has been successfully loaded and initialized.
   bool get isInitialized => _isInitialized;
 
@@ -100,21 +110,40 @@ class RustBridgeService {
     final String libName = Platform.isWindows
         ? 'myki_core.dll'
         : Platform.isMacOS
-            ? 'libmyki_core.dylib'
-            : 'libmyki_core.so';
+        ? 'libmyki_core.dylib'
+        : 'libmyki_core.so';
 
     try {
       // Open the dynamic library.
       _lib = DynamicLibrary.open(libName);
-      
+
       // Look up and bind the Rust functions to Dart variables.
-      _deriveKey = _lib.lookupFunction<MykiDeriveKeyNative, MykiDeriveKeyDart>('myki_derive_key');
-      _encrypt = _lib.lookupFunction<MykiEncryptNative, MykiEncryptDart>('myki_encrypt');
-      _decrypt = _lib.lookupFunction<MykiDecryptNative, MykiDecryptDart>('myki_decrypt');
-      _generateTotp = _lib.lookupFunction<MykiGenerateTotpNative, MykiGenerateTotpDart>('myki_generate_totp');
-      _isValidBase32 = _lib.lookupFunction<MykiIsValidBase32Native, MykiIsValidBase32Dart>('myki_is_valid_base32');
-      _freeString = _lib.lookupFunction<MykiFreeStringNative, MykiFreeStringDart>('myki_free_string');
-      
+      _deriveKey = _lib.lookupFunction<MykiDeriveKeyNative, MykiDeriveKeyDart>(
+        'myki_derive_key',
+      );
+      _encrypt = _lib.lookupFunction<MykiEncryptNative, MykiEncryptDart>(
+        'myki_encrypt',
+      );
+      _decrypt = _lib.lookupFunction<MykiDecryptNative, MykiDecryptDart>(
+        'myki_decrypt',
+      );
+      _generateTotp = _lib
+          .lookupFunction<MykiGenerateTotpNative, MykiGenerateTotpDart>(
+            'myki_generate_totp',
+          );
+      _isValidBase32 = _lib
+          .lookupFunction<MykiIsValidBase32Native, MykiIsValidBase32Dart>(
+            'myki_is_valid_base32',
+          );
+      _freeString = _lib
+          .lookupFunction<MykiFreeStringNative, MykiFreeStringDart>(
+            'myki_free_string',
+          );
+      _generateSalt = _lib
+          .lookupFunction<MykiGenerateSaltNative, MykiGenerateSaltDart>(
+            'myki_generate_salt',
+          );
+
       _isInitialized = true;
     } catch (e) {
       // If initialization fails (e.g., library not found), the service remains uninitialized.
@@ -139,15 +168,13 @@ class RustBridgeService {
     try {
       final result = _deriveKey(pPassword, pSalt, pOutKey);
       if (result == 0) {
-        // Successfully derived key. Convert back to Dart string.
-        final key = pOutKey.value.toDartString();
-        // Crucial: Free the string allocated by Rust to prevent memory leaks.
-        _freeString(pOutKey.value);
-        return key;
+        return pOutKey.value.toDartString();
       }
       return null;
     } finally {
-      // Free the native memory allocated by Dart.
+      if (pOutKey.value != nullptr) {
+        _freeString(pOutKey.value);
+      }
       calloc.free(pPassword);
       calloc.free(pSalt);
       calloc.free(pOutKey);
@@ -169,12 +196,13 @@ class RustBridgeService {
     try {
       final result = _encrypt(pPlaintext, pKey, pOutEncrypted);
       if (result == 0) {
-        final encrypted = pOutEncrypted.value.toDartString();
-        _freeString(pOutEncrypted.value);
-        return encrypted;
+        return pOutEncrypted.value.toDartString();
       }
       return null;
     } finally {
+      if (pOutEncrypted.value != nullptr) {
+        _freeString(pOutEncrypted.value);
+      }
       calloc.free(pPlaintext);
       calloc.free(pKey);
       calloc.free(pOutEncrypted);
@@ -196,12 +224,13 @@ class RustBridgeService {
     try {
       final result = _decrypt(pEncrypted, pKey, pOutPlaintext);
       if (result == 0) {
-        final plaintext = pOutPlaintext.value.toDartString();
-        _freeString(pOutPlaintext.value);
-        return plaintext;
+        return pOutPlaintext.value.toDartString();
       }
       return null;
     } finally {
+      if (pOutPlaintext.value != nullptr) {
+        _freeString(pOutPlaintext.value);
+      }
       calloc.free(pEncrypted);
       calloc.free(pKey);
       calloc.free(pOutPlaintext);
@@ -221,12 +250,13 @@ class RustBridgeService {
     try {
       final result = _generateTotp(pSecret, pOutCode);
       if (result == 0) {
-        final code = pOutCode.value.toDartString();
-        _freeString(pOutCode.value);
-        return code;
+        return pOutCode.value.toDartString();
       }
       return null;
     } finally {
+      if (pOutCode.value != nullptr) {
+        _freeString(pOutCode.value);
+      }
       calloc.free(pSecret);
       calloc.free(pOutCode);
     }
@@ -243,6 +273,22 @@ class RustBridgeService {
       return _isValidBase32(pSecret) != 0;
     } finally {
       calloc.free(pSecret);
+    }
+  }
+
+  /// Generates a cryptographically secure random salt.
+  ///
+  /// Returns a List of 32 random bytes, or `null` if generation failed.
+  List<int>? generateSalt() {
+    if (!_isInitialized) return null;
+
+    final pSalt = calloc<Uint8>(32);
+
+    try {
+      _generateSalt(pSalt, 32);
+      return pSalt.asTypedList(32).toList();
+    } finally {
+      calloc.free(pSalt);
     }
   }
 }

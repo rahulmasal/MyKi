@@ -407,18 +407,30 @@ impl VaultDatabase {
             // Decrypt each credential
             // -----------------------------------------------------------------------
             // Parse the base64-encoded encrypted data
-            if let Ok(encrypted) = EncryptedData::from_base64(&combined) {
-                // Decrypt the data
-                if let Ok(decrypted) = self.cipher.decrypt(&encrypted, None) {
-                    // Parse the JSON
-                    if let Ok(json) = String::from_utf8(decrypted) {
-                        if let Ok(credential) = serde_json::from_str::<Credential>(&json) {
-                            credentials.push(credential);
+            match EncryptedData::from_base64(&combined) {
+                Ok(encrypted) => {
+                    match self.cipher.decrypt(&encrypted, None) {
+                        Ok(decrypted) => {
+                            if let Ok(json) = String::from_utf8(decrypted) {
+                                if let Ok(credential) = serde_json::from_str::<Credential>(&json) {
+                                    credentials.push(credential);
+                                } else {
+                                    eprintln!("Warning: Failed to parse credential JSON for ID: {}", "unknown");
+                                }
+                            } else {
+                                eprintln!("Warning: Failed to parse decrypted data as UTF-8");
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("Warning: Failed to decrypt credential: {:?}", e);
                         }
                     }
+                },
+                Err(e) => {
+                    eprintln!("Warning: Failed to parse EncryptedData from base64: {:?}", e);
                 }
             }
-            // Note: We silently skip malformed entries rather than failing the whole operation
+            // Note: We skip malformed entries rather than failing the whole operation, but now we log them
         }
         
         Ok(credentials)

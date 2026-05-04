@@ -31,7 +31,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.ico"],
+    "icon": ["icons/icon.ico", "icons/icon.png"],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

@@ -87,7 +87,7 @@ impl Default for Argon2Config {
     /// - Portable: Works well across different hardware configurations
     fn default() -> Self {
         Self {
-            memory: 65536,   // 64 MiB in KiB
+            memory: 131072,   // 128 MiB in KiB
             iterations: 3,   // 3 passes over memory
             parallelism: 4,  // 4 threads (good for most modern CPUs)
             output_len: 64, // 64 bytes = 32 for vault key + 32 for MAC key

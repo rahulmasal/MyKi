@@ -86,12 +86,17 @@ jobs:
 
       - name: build android apk
         if: matrix.target == 'apk'
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/myki-android.apk
         working-directory: myki_app
 
       - name: build ios
         if: matrix.target == 'ios'
-        run: flutter build ios --release --no-codesign
+        run: |
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          zip -r myki-ios.zip Runner.app
         working-directory: myki_app
 
       - name: upload mobile artifacts
@@ -99,8 +104,8 @@ jobs:
         with:
           name: mobile-${{ matrix.target }}
           path: |
-            myki_app/build/app/outputs/flutter-apk/*.apk
-            myki_app/build/ios/iphoneos/*.app
+            myki_app/build/app/outputs/flutter-apk/myki-android.apk
+            myki_app/build/ios/iphoneos/myki-ios.zip
 
   # 3. Build Browser Extension (Chrome/Firefox)
   build-extension:
@@ -162,7 +167,7 @@ jobs:
             **/*.deb
             **/*.AppImage
             **/*.apk
-            **/*.app
+            **/*myki-ios.zip
             **/*chrome*.zip
             **/*firefox*.zip
         env:

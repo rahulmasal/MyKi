@@ -40,6 +40,16 @@ class VaultService {
     return salt != null;
   }
 
+  /// Checks if the master password meets minimum strength requirements.
+  bool _isPasswordStrong(String password) {
+    if (password.length < 12) return false;
+    if (!password.contains(RegExp(r'[A-Z]'))) return false;
+    if (!password.contains(RegExp(r'[a-z]'))) return false;
+    if (!password.contains(RegExp(r'[0-9]'))) return false;
+    if (!password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'))) return false;
+    return true;
+  }
+
   /// Creates a new vault protected by the provided [masterPassword].
   ///
   /// This involves:
@@ -48,13 +58,15 @@ class VaultService {
   /// 3. Storing a hash of the derived key for future verification.
   /// 4. Auto-unlocking the vault by setting the session key.
   Future<void> createVault(String masterPassword) async {
+    if (!_isPasswordStrong(masterPassword)) {
+      throw Exception('Password does not meet strength requirements');
+    }
+
     _rustBridge.initialize();
 
-    // Generate a cryptographically secure random salt.
-    final random = Random.secure();
-    final saltBytes = Uint8List.fromList(
-      List<int>.generate(32, (_) => random.nextInt(256)),
-    );
+    // Generate a cryptographically secure random salt using the Rust core.
+    final saltBytes = _rustBridge.generateSalt();
+    if (saltBytes == null) throw Exception('Failed to generate salt');
     final saltB64 = base64Encode(saltBytes);
 
     // Derive the master key using the strong Argon2id KDF in the Rust core.
@@ -64,10 +76,15 @@ class VaultService {
     // Persist the salt needed for future key derivations.
     await _storage.write(key: 'vault_salt', value: saltB64);
 
-    // Store a hash of the derived key to verify the master password on future unlocks
-    // without storing the master password or the key itself.
-    // Using SHA-256 for cryptographic hashing
-    final keyHash = sha256.convert(utf8.encode(derivedKeyB64)).toString();
+    // Derive a separate hash for verification using Argon2id to avoid fast-hash vulnerabilities
+    final verificationSaltBytes = _rustBridge.generateSalt();
+    if (verificationSaltBytes == null) throw Exception('Failed to generate verification salt');
+    final verificationSaltB64 = base64Encode(verificationSaltBytes);
+
+    final keyHash = _rustBridge.deriveKey(derivedKeyB64, verificationSaltB64);
+    if (keyHash == null) throw Exception('Failed to derive verification hash');
+
+    await _storage.write(key: 'vault_verification_salt', value: verificationSaltB64);
     await _storage.write(key: 'vault_key_hash', value: keyHash);
 
     // Set the session key to unlock the vault.
@@ -89,7 +106,17 @@ class VaultService {
     if (derivedKeyB64 == null) return false;
 
     // Verify the derived key against the stored hash.
-    final keyHash = sha256.convert(utf8.encode(derivedKeyB64)).toString();
+    final verificationSaltB64 = await _storage.read(key: 'vault_verification_salt');
+    String keyHash;
+
+    if (verificationSaltB64 != null) {
+      // Use the new Argon2id based verification
+      keyHash = _rustBridge.deriveKey(derivedKeyB64, verificationSaltB64) ?? '';
+    } else {
+      // Fallback for older vaults using SHA-256
+      keyHash = sha256.convert(utf8.encode(derivedKeyB64)).toString();
+    }
+
     final storedHash = await _storage.read(key: 'vault_key_hash');
 
     if (keyHash == storedHash) {
