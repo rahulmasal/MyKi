@@ -20,7 +20,7 @@
 
 ---
 
-> ### 🔥 Like Myki? Love Myki's Spirit? Meet **Myki** — The Open Source Revival!
+> ### 🔥 Like Myki? Love Myki's Spirit? Meet **MyKi** — The Open Source Revival!
 >
 > Built from the ground up with modern cryptography, Myki brings back the magic of true peer-to-peer password syncing. No cloud. No servers. Just your devices, talking directly to each other with military-grade encryption.
 
@@ -42,18 +42,19 @@ Myki is built for those who refuse to trust the cloud with their most sensitive 
 
 How Myki stacks up against the best "local-first" and offline password managers.
 
-| Feature               | Myki (P2P)      | KeePassXC       | Enpass          | Strongbox       |
-| --------------------- | --------------- | --------------- | --------------- | --------------- |
-| **Primary Storage**   | Local (Secure)  | Local (.kdbx)   | Local / Cloud   | Local / Cloud   |
-| **Sync Method**       | **Direct P2P**  | Manual / Plugin | Cloud Relay     | Cloud Relay     |
-| **Key Derivation**    | **Argon2id**    | Argon2id        | PBKDF2          | Argon2id        |
-| **Modern UI/UX**      | ✅ Yes          | ❌ Legacy       | ✅ Yes          | ✅ Yes (iOS)    |
-| **Browser Ext.**      | ✅ Native Rust  | ✅ Yes          | ✅ Yes          | ✅ Yes          |
-| **Mobile Biometrics** | ✅ Face/TouchID | ✅ Partial      | ✅ Yes          | ✅ Yes          |
-| **Native Core**       | **Rust**        | C++             | C++             | Swift           |
-| **Open Source**       | ✅ Yes          | ✅ Yes          | ❌ No           | ✅ Yes (Core)   |
+| Feature               | Myki (P2P)      | KeePassXC       | Enpass        | Strongbox     |
+| --------------------- | --------------- | --------------- | ------------- | ------------- |
+| **Primary Storage**   | Local (Secure)  | Local (.kdbx)   | Local / Cloud | Local / Cloud |
+| **Sync Method**       | **Direct P2P**  | Manual / Plugin | Cloud Relay   | Cloud Relay   |
+| **Key Derivation**    | **Argon2id**    | Argon2id        | PBKDF2        | Argon2id      |
+| **Modern UI/UX**      | ✅ Yes          | ❌ Legacy       | ✅ Yes        | ✅ Yes (iOS)  |
+| **Browser Ext.**      | ✅ Native Rust  | ✅ Yes          | ✅ Yes        | ✅ Yes        |
+| **Mobile Biometrics** | ✅ Face/TouchID | ✅ Partial      | ✅ Yes        | ✅ Yes        |
+| **Native Core**       | **Rust**        | C++             | C++           | Swift         |
+| **Open Source**       | ✅ Yes          | ✅ Yes          | ❌ No         | ✅ Yes (Core) |
 
 ### **The Myki Advantage**
+
 While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpass** offers sync but relies on 3rd-party clouds (Dropbox/Google Drive) which increases your attack surface. **Myki** bridges this gap: the security of a completely offline manager with the convenience of an automated cloud manager.
 
 ---
@@ -61,6 +62,7 @@ While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpas
 ## 🚀 The Myki Difference
 
 ### Before (The Cloud Way)
+
 Traditional managers use a central server as a middleman, creating a single point of failure and a high-value target for hackers.
 
 ```mermaid
@@ -71,6 +73,7 @@ graph LR
 ```
 
 ### After (The Myki Way)
+
 Myki devices talk directly to each other. Your data never lives on a server, and the connection is end-to-end encrypted.
 
 ```mermaid
@@ -120,13 +123,14 @@ flowchart TD
 ## 🔒 Security Model
 
 ### Encryption Stack
+
 Our security model follows the defense-in-depth principle, ensuring your master password is never stored and your vault is robust against brute-force attacks.
 
 ```mermaid
 flowchart TD
     MP[Master Password] --> KDF[Argon2id Key Derivation]
     KDF --> MK[Master Key 256-bit]
-    
+
     MK --> VK[Vault Key - AES-256-GCM]
     MK --> MA[MAC Key - HMAC-SHA256]
     MK --> SK[Session Key - Quick Ops]
@@ -164,12 +168,12 @@ flowchart TD
 
 ### Platform Support
 
-| Platform | Support | Status |
-| :--- | :--- | :--- |
-| **Mobile** | iOS, Android | ✅ Done |
-| **Desktop** | Windows, macOS, Linux | ✅ Done |
+| Platform       | Support                       | Status  |
+| :------------- | :---------------------------- | :------ |
+| **Mobile**     | iOS, Android                  | ✅ Done |
+| **Desktop**    | Windows, macOS, Linux         | ✅ Done |
 | **Extensions** | Chrome, Firefox, Edge, Safari | ✅ Done |
-| **CLI** | Rust Terminal Tool | ✅ Done |
+| **CLI**        | Rust Terminal Tool            | ✅ Done |
 
 ---
 
@@ -236,8 +240,6 @@ cargo run -- --help
 ```text
 myki/
 ├── 📄 README.md                      # This file
-├── 📄 TECHNICAL_SPECIFICATION.md     # Detailed architecture docs
-├── 📄 SECURITY_COMPARISON.md         # Security vs competitors
 ├── 📱 myki_app/                      # Flutter Mobile App
 ├── 🦀 myki_core/                     # Shared Rust Core
 ├── 🖥️ myki_extension/                # Tauri Desktop App & Web-Ext
@@ -251,16 +253,19 @@ myki/
 We welcome contributions! To make it easier to get started, we've broken down our goals into small, actionable tasks:
 
 ### 🌟 High-Impact Tasks (Beginner Friendly)
+
 - 🎨 **UX/UI**: Improve visual hierarchy of the "Favorites" list on Android.
 - 📝 **Docs**: Add inline documentation for the `P2P Sync` message protocol.
 - 🐞 **Fix**: Resolve "stray HTML tag" warnings in the WebExtension popup.
 
 ### 🔧 Engineering Tasks
+
 - 🚀 **Performance**: Implement delta-compression for syncing very large vaults.
 - 🧪 **Testing**: Add integration tests for the `myki_cli` <-> `myki_core` interface.
 - 📱 **Native**: Optimize WebRTC stream management for intermittent mobile data.
 
 ### 🛡️ Security & Trust
+
 - 🔎 **Audit**: Perform a manual review of the Argon2id parameter choices.
 - 🔐 **Hardening**: Implement SSL pinning for the optional P2P relay server.
 - 🧪 **Pen-Test**: Conduct a failure-mode analysis on WebRTC handshake hijacking.
@@ -301,10 +306,8 @@ Built with ❤️ and a lot of ☕ by the open source community.
 
 ## 🔗 Links
 
-- 📘 [Technical Specification](TECHNICAL_SPECIFICATION.md)
-- 🛡️ [Security Comparison](SECURITY_COMPARISON.md)
-- 💬 [Discord Community](https://discord.gg/myki)
 - 🐛 [Issue Tracker](https://github.com/rahulmasal/MyKi/issues)
+- 💬 [Discord Community](https://discord.gg/myki)
 
 ---
 
