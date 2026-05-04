@@ -125,6 +125,10 @@ impl VaultDatabase {
         let conn = Connection::open(path)
             .map_err(|e| VaultError::Database(format!("Failed to open database: {}", e)))?;
         
+        // Enable WAL mode for better read/write concurrency
+        conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(|e| VaultError::Database(format!("Failed to enable WAL mode: {}", e)))?;
+        
         // -----------------------------------------------------------------------
         // Initialize the database schema
         // -----------------------------------------------------------------------
@@ -230,6 +234,10 @@ impl VaultDatabase {
         // Open the SQLite database
         let conn = Connection::open(path)
             .map_err(|e| VaultError::Database(format!("Failed to open database: {}", e)))?;
+            
+        // Enable WAL mode for better read/write concurrency
+        conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(|e| VaultError::Database(format!("Failed to enable WAL mode: {}", e)))?;
         
         // Create the cipher with the vault key
         let cipher = Aes256Gcm::new(&master_key.vault_key);

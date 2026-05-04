@@ -170,7 +170,7 @@ class RustBridgeService {
       if (result == 0) {
         return pOutKey.value.toDartString();
       }
-      return null;
+      throw RustBridgeException('Failed to derive key. Error code: $result');
     } finally {
       if (pOutKey.value != nullptr) {
         _freeString(pOutKey.value);
@@ -198,7 +198,7 @@ class RustBridgeService {
       if (result == 0) {
         return pOutEncrypted.value.toDartString();
       }
-      return null;
+      throw RustBridgeException('Failed to encrypt data. Error code: $result');
     } finally {
       if (pOutEncrypted.value != nullptr) {
         _freeString(pOutEncrypted.value);
@@ -226,7 +226,7 @@ class RustBridgeService {
       if (result == 0) {
         return pOutPlaintext.value.toDartString();
       }
-      return null;
+      throw RustBridgeException('Failed to decrypt data. Data may be corrupted or key is invalid. Error code: $result');
     } finally {
       if (pOutPlaintext.value != nullptr) {
         _freeString(pOutPlaintext.value);
@@ -252,7 +252,7 @@ class RustBridgeService {
       if (result == 0) {
         return pOutCode.value.toDartString();
       }
-      return null;
+      throw RustBridgeException('Failed to generate TOTP code. Secret may be invalid. Error code: $result');
     } finally {
       if (pOutCode.value != nullptr) {
         _freeString(pOutCode.value);
@@ -291,4 +291,13 @@ class RustBridgeService {
       calloc.free(pSalt);
     }
   }
+}
+
+/// Custom exception for Rust FFI bridge errors.
+class RustBridgeException implements Exception {
+  final String message;
+  RustBridgeException(this.message);
+
+  @override
+  String toString() => 'RustBridgeException: $message';
 }
