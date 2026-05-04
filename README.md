@@ -1,320 +1,226 @@
-# 🔐 Myki: Remember Everything, Share Nothing.
+# Myki - P2P Password Manager
 
 <p align="center">
-  <img src="myki_app/assets/images/logo.svg" alt="Myki Logo" width="200">
+  <img src="assets/images/myki_white.jpg" width="200" alt="Myki Logo"/>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Active-success?style=for-the-badge" alt="Status">
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20Desktop-green?style=for-the-badge" alt="Platform">
-  <img src="https://img.shields.io/badge/Security-Zero%20Knowledge-orange?style=for-the-badge" alt="Security">
-  <img src="https://img.shields.io/badge/Sync-P2P%20Powered-purple?style=for-the-badge" alt="Sync">
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/github/stars/rahulmasal/MyKi?style=for-the-badge" alt="Stars">
-  <img src="https://img.shields.io/github/forks/rahulmasal/MyKi?style=for-the-badge" alt="Forks">
-  <img src="https://img.shields.io/github/issues/rahulmasal/MyKi?style=for-the-badge" alt="Issues">
+  <strong>A secure, local-first password manager with peer-to-peer sync</strong>
 </p>
 
 ---
 
-> ### 🔥 Like Myki? Love Myki's Spirit? Meet **MyKi** — The Open Source Revival!
->
-> Built from the ground up with modern cryptography, Myki brings back the magic of true peer-to-peer password syncing. No cloud. No servers. Just your devices, talking directly to each other with military-grade encryption.
+## 📖 Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Projects](#projects)
+- [Security Model](#security-model)
+- [Getting Started](#getting-started)
+- [Contributing](#contributing)
 
 ---
 
-## ✨ Why Myki?
+## 🌍 Overview
 
-Myki is built for those who refuse to trust the cloud with their most sensitive data. Unlike traditional managers, it combines **military-grade security** with **frictionless peer-to-peer syncing**.
+**Myki** is an open-source password manager designed with security and privacy as its core principles. Unlike cloud-based password managers, Myki stores all data locally on your device, giving you complete control over your sensitive information.
 
-- 🔐 **Zero-Knowledge**: Your master password never leaves your brain; your vault never leaves your devices.
-- 📡 **P2P Sync**: Direct device-to-device communication via WebRTC. No central server to breach.
-- 🛡️ **Modern Crypto**: Powered by **Argon2id** (memory-hard KDF) and **AES-256-GCM** (authenticated encryption).
-- 🚀 **Native Performance**: Core logic written in **Rust** for maximum speed and memory safety.
-- 🌐 **Open Source**: Auditable, transparent, and community-driven.
+### Key Features
 
----
-
-## 📊 Offline Manager Comparison
-
-How Myki stacks up against the best "local-first" and offline password managers.
-
-| Feature               | Myki (P2P)      | KeePassXC       | Enpass        | Strongbox     |
-| --------------------- | --------------- | --------------- | ------------- | ------------- |
-| **Primary Storage**   | Local (Secure)  | Local (.kdbx)   | Local / Cloud | Local / Cloud |
-| **Sync Method**       | **Direct P2P**  | Manual / Plugin | Cloud Relay   | Cloud Relay   |
-| **Key Derivation**    | **Argon2id**    | Argon2id        | PBKDF2        | Argon2id      |
-| **Modern UI/UX**      | ✅ Yes          | ❌ Legacy       | ✅ Yes        | ✅ Yes (iOS)  |
-| **Browser Ext.**      | ✅ Native Rust  | ✅ Yes          | ✅ Yes        | ✅ Yes        |
-| **Mobile Biometrics** | ✅ Face/TouchID | ✅ Partial      | ✅ Yes        | ✅ Yes        |
-| **Native Core**       | **Rust**        | C++             | C++           | Swift         |
-| **Open Source**       | ✅ Yes          | ✅ Yes          | ❌ No         | ✅ Yes (Core) |
-
-### **The Myki Advantage**
-
-While **KeePassXC** is highly secure, it lacks modern, seamless syncing. **Enpass** offers sync but relies on 3rd-party clouds (Dropbox/Google Drive) which increases your attack surface. **Myki** bridges this gap: the security of a completely offline manager with the convenience of an automated cloud manager.
-
----
-
-## 🚀 The Myki Difference
-
-### Before (The Cloud Way)
-
-Traditional managers use a central server as a middleman, creating a single point of failure and a high-value target for hackers.
-
-```mermaid
-graph LR
-    A[Phone] -- "Encrypted Vault" --> B((Cloud Server))
-    C[Desktop] -- "Encrypted Vault" --> B
-    style B fill:#f96,stroke:#333,stroke-width:2px
-```
-
-### After (The Myki Way)
-
-Myki devices talk directly to each other. Your data never lives on a server, and the connection is end-to-end encrypted.
-
-```mermaid
-graph LR
-    A[Phone] <-->|P2P WebRTC| B[Desktop]
-    A -.->|Handshake| C((Relay Node))
-    B -.->|Handshake| C
-    linkStyle 0 stroke:#00ff00,stroke-width:3px
-    style C stroke-dasharray: 5 5
-```
+- **🔐 Local-First Security**: All encryption happens on-device. Your master password never leaves your device.
+- **🧬 Cryptographic Best Practices**: Uses Argon2id for key derivation and AES-256-GCM for encryption.
+- **⏱️ Two-Factor Authentication (TOTP)**: Built-in support for time-based one-time passwords.
+- **📱 Cross-Platform**: Flutter for mobile (iOS/Android), Rust for core logic, Tauri for extensions.
+- **🔄 Peer-to-Peer Sync**: WebRTC-based sync without centralized servers.
 
 ---
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart TD
-    subgraph Clients
-        A[iOS App]
-        B[Android App]
-        C[Desktop App]
-        D[Browser Extension]
-    end
-
-    subgraph Core ["Flutter / Rust Core Logic"]
-        E{Security Engine}
-        F[AES-256-GCM]
-        G[Argon2id KDF]
-        H[TOTP RFC 6238]
-    end
-
-    subgraph Storage
-        I[(SQLCipher Vault)]
-    end
-
-    subgraph Network ["Sync Layer"]
-        J[WebRTC DataChannel]
-    end
-
-    Clients --> Core
-    Core --> Storage
-    Core <--> Network
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Myki Architecture                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│   │ Flutter App │  │  CLI Tool  │  │   Browser Extension     │ │
+│   │  (Mobile)   │  │ (Terminal) │  │   (Tauri + WebExt)      │ │
+│   └──────┬──────┘  └──────┬──────┘  └───────────┬─────────────┘ │
+│          │                │                     │               │
+│          └────────────────┴─────────────────────┘               │
+│                           │                                       │
+│                   ┌───────▼───────┐                               │
+│                   │  FFI Bridge   │                               │
+│                   └───────┬───────┘                               │
+│                           │                                       │
+│          ┌────────────────┴────────────────┐                       │
+│          ▼                                 ▼                       │
+│   ┌─────────────────────────────────────────────────────────┐     │
+│   │                     myki_core (Rust)                     │     │
+│   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │     │
+│   │  │   crypto/   │  │    totp/    │  │     vault/      │  │     │
+│   │  │  • KDF      │  │  • Generator│  │  • Database     │  │     │
+│   │  │  • Keys     │  │  • RFC6238  │  │  • Models       │  │     │
+│   │  │  • AES-GCM  │  │             │  │                 │  │     │
+│   │  └─────────────┘  └─────────────┘  └─────────────────┘  │     │
+│   └─────────────────────────────────────────────────────────┘     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+1. **User authenticates** with master password
+2. **Argon2id KDF** derives a 256-bit vault key from password + salt
+3. **Vault key** encrypts/decrypts all credential data using AES-256-GCM
+4. **TOTP secrets** generate time-based codes for 2FA
+5. **Encrypted database** stores all data securely on disk
+
+---
+
+## 📁 Projects
+
+### [`myki_core/`](myki_core/) - Rust Core Library
+
+The cryptographic engine powering Myki. Written in Rust for memory safety and performance.
+
+| Module                             | Purpose                                           |
+| ---------------------------------- | ------------------------------------------------- |
+| [`crypto/`](myki_core/src/crypto/) | Encryption, key derivation, random generation     |
+| [`totp/`](myki_core/src/totp/)     | RFC 6238 TOTP code generation                     |
+| [`vault/`](myki_core/src/vault/)   | Encrypted SQLite storage                          |
+| [`ffi.rs`](myki_core/src/ffi.rs)   | Foreign Function Interface for non-Rust consumers |
+
+### [`myki_app/`](myki_app/) - Flutter Mobile App
+
+Cross-platform mobile application (iOS & Android).
+
+| Directory                                                         | Purpose                                               |
+| ----------------------------------------------------------------- | ----------------------------------------------------- |
+| [`lib/core/models/`](myki_app/lib/core/models/)                   | Data structures (Credential, Identity, etc.)          |
+| [`lib/core/services/`](myki_app/lib/core/services/)               | Business logic (VaultService, BiometricService, etc.) |
+| [`lib/presentation/blocs/`](myki_app/lib/presentation/blocs/)     | State management (AuthBloc, VaultBloc)                |
+| [`lib/presentation/pages/`](myki_app/lib/presentation/pages/)     | Screen UI (UnlockPage, VaultPage, etc.)               |
+| [`lib/presentation/widgets/`](myki_app/lib/presentation/widgets/) | Reusable UI components                                |
+
+### [`myki_cli/`](myki_cli/) - Command Line Interface
+
+Terminal-based interface for power users.
+
+```bash
+myki_cli list                    # List all credentials
+myki_cli search "github"          # Search credentials
+myki_cli add "GitHub" "user@..." # Add new credential
+```
+
+### [`myki_extension/`](myki_extension/) - Browser Extension
+
+Tauri-based browser extension for auto-fill functionality.
 
 ---
 
 ## 🔒 Security Model
 
-### Encryption Stack
+### Key Derivation (Argon2id)
 
-Our security model follows the defense-in-depth principle, ensuring your master password is never stored and your vault is robust against brute-force attacks.
-
-```mermaid
-flowchart TD
-    MP[Master Password] --> KDF[Argon2id Key Derivation]
-    KDF --> MK[Master Key 256-bit]
-
-    MK --> VK[Vault Key - AES-256-GCM]
-    MK --> MA[MAC Key - HMAC-SHA256]
-    MK --> SK[Session Key - Quick Ops]
-
-    VK --> V[Encrypted Vault Data]
-    MA --> I[Integrity Verification]
+```
+Master Password + Random Salt ──► Argon2id KDF ──► 256-bit Vault Key
+                                    (64 MiB, 3 iterations)
 ```
 
-### Cracking Time Comparison
+**Why Argon2id?**
 
-| Attacker Hardware | Myki (Argon2id) | Others (PBKDF2) |
-| ----------------- | --------------- | --------------- |
-| Single RTX 4090   | ~10¹⁵ years     | ~10⁸ years      |
-| 1000 GPU Cluster  | ~10¹² years     | ~10⁵ years      |
-| Custom ASIC       | Impractical     | ~10³ years      |
+- Memory-hard: Resistant to GPU/ASIC attacks
+- Side-channel resistant: Safe against timing attacks
+- Industry standard: Winner of Password Hashing Competition
 
----
+### Encryption (AES-256-GCM)
 
-## 📱 Features
+```
+Plaintext + Vault Key + Random Nonce ──► AES-256-GCM ──► Ciphertext + Auth Tag
+```
 
-### Core Features
+**Why GCM?**
 
-| Feature                 | Status | Description                    |
-| ----------------------- | ------ | ------------------------------ |
-| 🔐 Master Password      | ✅     | Argon2id key derivation        |
-| 👆 Biometric Unlock     | ✅     | Face ID, Touch ID, Fingerprint |
-| 📝 Credential Storage   | ✅     | AES-256-GCM encrypted          |
-| 🔄 P2P Sync             | ✅     | WebRTC direct connection       |
-| ⏱️ TOTP 2FA             | ✅     | RFC 6238 authenticator         |
-| 🎲 Password Generator   | ✅     | Customizable complexity        |
-| 📋 Clipboard Auto-Clear | ✅     | Configurable timeout           |
-| 🔍 Search & Filter      | ✅     | Full-text search               |
-| ⭐ Favorites            | ✅     | Quick access items             |
-| 📁 Folders              | ✅     | Organize credentials           |
+- Authenticated Encryption: Confidenciality + Integrity
+- Random nonce: Each encryption is unique
+- Hardware accelerated: Fast on modern CPUs
 
-### Platform Support
+### Password Storage
 
-| Platform       | Support                       | Status  |
-| :------------- | :---------------------------- | :------ |
-| **Mobile**     | iOS, Android                  | ✅ Done |
-| **Desktop**    | Windows, macOS, Linux         | ✅ Done |
-| **Extensions** | Chrome, Firefox, Edge, Safari | ✅ Done |
-| **CLI**        | Rust Terminal Tool            | ✅ Done |
+```
+User Password ──► Derive Key ──► Hash Key ──► Store Hash
+                                     │
+                                     ▼
+                            Verification on unlock
+```
+
+**Important**: The master password is NEVER stored. Only a hash of the derived key is stored for verification.
 
 ---
 
-## 🛠️ Tech Stack
+## 🚀 Getting Started
 
-| Layer           | Technology             | Why                                |
-| --------------- | ---------------------- | ---------------------------------- |
-| **Mobile UI**   | Flutter                | Cross-platform, native performance |
-| **Desktop UI**  | Tauri + HTML/CSS       | Lightweight, native feel           |
-| **CLI**         | Rust + Clap            | Blazing fast, technical access     |
-| **Core Crypto** | Rust                   | Memory-safe, high performance      |
-| **Encryption**  | AES-256-GCM + Argon2id | Industry standard                  |
-| **Database**    | SQLCipher              | Encrypted SQLite                   |
-| **Sync**        | WebRTC                 | P2P encrypted channels             |
-| **State**       | BLoC Pattern           | Predictable, testable              |
+### Prerequisites
 
----
+- **Rust** 1.70+ (for building core)
+- **Flutter** 3.10+ (for mobile app)
+- **Android SDK** / **Xcode** (for mobile development)
 
-## 🚀 Quick Start
-
-### Flutter Mobile App
+### Building
 
 ```bash
 # Clone the repository
-git clone https://github.com/rahulmasal/MyKi.git
-cd MyKi/myki_app
+git clone https://github.com/your-org/myki.git
+cd myki
 
-# Install dependencies
+# Build Rust core
+cd myki_core
+cargo build --release
+
+# Build Flutter app
+cd ../myki_app
 flutter pub get
+flutter run
 
-# Run on iOS
-flutter run -d "iPhone 14 Pro"
-
-# Run on Android
-flutter run -d "Pixel 6"
+# Build CLI
+cd ../myki_cli
+cargo build --release
 ```
 
-### Desktop App (Windows/macOS/Linux)
+### Running Tests
 
 ```bash
-cd MyKi/myki_extension/src-tauri
+# Rust tests
+cd myki_core
+cargo test
 
-# Install Rust dependencies
-cargo fetch
-
-# Development mode
-cargo tauri dev
-
-# Production build
-cargo tauri build
-```
-
-### CLI Tool (Rust)
-
-```bash
-cd MyKi/myki_cli
-cargo run -- --help
+# Flutter tests
+cd ../myki_app
+flutter test
 ```
 
 ---
 
-## 📂 Project Structure
+## 👨‍💻 Contributing
 
-```text
-myki/
-├── 📄 README.md                      # This file
-├── 📱 myki_app/                      # Flutter Mobile App
-├── 🦀 myki_core/                     # Shared Rust Core
-├── 🖥️ myki_extension/                # Tauri Desktop App & Web-Ext
-└── ⌨️ myki_cli/                      # Rust Command Line Tool
-```
+1. **Fork** the repository
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Commit your changes** (`git commit -m 'Add amazing feature'`)
+4. **Push to the branch** (`git push origin feature/amazing-feature`)
+5. **Open a Pull Request**
 
 ---
 
-## 🤝 Contributing
+## 📄 License
 
-We welcome contributions! To make it easier to get started, we've broken down our goals into small, actionable tasks:
-
-### 🌟 High-Impact Tasks (Beginner Friendly)
-
-- 🎨 **UX/UI**: Improve visual hierarchy of the "Favorites" list on Android.
-- 📝 **Docs**: Add inline documentation for the `P2P Sync` message protocol.
-- 🐞 **Fix**: Resolve "stray HTML tag" warnings in the WebExtension popup.
-
-### 🔧 Engineering Tasks
-
-- 🚀 **Performance**: Implement delta-compression for syncing very large vaults.
-- 🧪 **Testing**: Add integration tests for the `myki_cli` <-> `myki_core` interface.
-- 📱 **Native**: Optimize WebRTC stream management for intermittent mobile data.
-
-### 🛡️ Security & Trust
-
-- 🔎 **Audit**: Perform a manual review of the Argon2id parameter choices.
-- 🔐 **Hardening**: Implement SSL pinning for the optional P2P relay server.
-- 🧪 **Pen-Test**: Conduct a failure-mode analysis on WebRTC handshake hijacking.
-
-```bash
-# 1. Fork the repository
-# 2. Create your feature branch
-git checkout -b feature/amazing-feature
-
-# 3. Commit your changes
-git commit -m "Add amazing feature"
-
-# 4. Push to the branch
-git push origin feature/amazing-feature
-
-# 5. Open a Pull Request
-```
-
----
-
-## 📜 License
-
-MIT License - Use it freely, but keep the credits.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
 ## 🙏 Acknowledgments
 
-<div align="center">
-
-**Inspired by the legendary [Myki](https://myki.com/)** — the original P2P password manager that showed the world how it should be done.
-
-Built with ❤️ and a lot of ☕ by the open source community.
-
-</div>
-
----
-
-## 🔗 Links
-
-- 🐛 [Issue Tracker](https://github.com/rahulmasal/MyKi/issues)
-- 💬 [Discord Community](https://discord.gg/myki)
-
----
-
-<p align="center">
-  <strong>🔐 Your secrets. Your devices. Your keys.</strong>
-  <br>
-  <sub>Myki: Remember Everything, Share Nothing.</sub>
-  <br>
-  <sub>Made with ❤️ for the open source community</sub>
-</p>
+- **Argon2**: For the excellent password hashing algorithm
+- **Flutter**: For the cross-platform UI framework
+- **Rust**: For the safe and fast core library
+- **SQLite**: For the reliable embedded database
