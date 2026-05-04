@@ -1,42 +1,60 @@
 name: Multi-Platform Release
 
+# The 'on' block tells GitHub exactly WHEN this robot should run.
 on:
   push:
+    # This says: "Only run when someone pushes a 'Tag' that starts with the letter 'v'"
+    # For example: pushing 'v1.0.0' or 'v0.2.3' will trigger this build.
     tags:
       - "v*"
+  # 'workflow_dispatch' means we can also click a manual button on GitHub to run this anytime we want!
   workflow_dispatch:
 
 jobs:
-  # 1. Build Desktop (Tauri) for Windows, macOS, and Linux
+  # ---------------------------------------------------------
+  # JOB 1: Build the Desktop App (Windows, Mac, Linux)
+  # ---------------------------------------------------------
   build-desktop:
     name: build-desktop (${{ matrix.platform }})
+    # We need permission to write (upload) files back to the GitHub Releases page.
     permissions:
       contents: write
+    
+    # A 'matrix' tells GitHub to run this exact same job multiple times on different computers.
+    # In this case, we are renting 3 computers: a Mac, an Ubuntu (Linux) machine, and a Windows PC.
     strategy:
-      fail-fast: false
+      fail-fast: false # If Windows fails, don't cancel Mac and Linux! Keep going.
       matrix:
         platform: [macos-latest, ubuntu-22.04, windows-latest]
+    
+    # This variable determines which cloud computer this current run is using.
     runs-on: ${{ matrix.platform }}
     steps:
+      # Step 1: Download all the code from our repository onto the cloud computer.
       - uses: actions/checkout@v4
 
+      # Step 2: Install Node.js (needed for the web part of our Tauri app).
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
+      # Step 3: Install the Rust programming language (needed for the core vault logic).
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      # Step 4: If we are on Linux, we need some extra system libraries to build graphical apps.
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
 
+      # Step 5: Install the Tauri Command Line Tool.
       - name: install tauri-cli
         run: cargo install tauri-cli
 
+      # Step 6: Actually build the app! This takes the code and compiles it into an executable file.
       - name: build tauri
         run: cargo tauri build
         working-directory: myki_extension/src-tauri
