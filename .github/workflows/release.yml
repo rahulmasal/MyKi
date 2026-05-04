@@ -33,6 +33,14 @@ jobs:
       # Step 1: Download all the code from our repository onto the cloud computer.
       - uses: actions/checkout@v4
 
+      # Debug: list repository files
+      - name: List repo files
+        run: |
+          echo "--- Repository root ---"
+          ls -R .
+          echo "--- End of listing ---"
+
+
       # Step 2: Install Node.js (needed for the web part of our Tauri app).
       - name: setup node
         uses: actions/setup-node@v4
