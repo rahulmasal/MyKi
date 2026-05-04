@@ -3,7 +3,7 @@ name: Multi-Platform Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -72,13 +72,13 @@ jobs:
         if: matrix.target == 'apk'
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: "zulu"
+          java-version: "17"
 
       - name: setup flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: "stable"
 
       - name: install dependencies
         run: flutter pub get
@@ -102,9 +102,48 @@ jobs:
             myki_app/build/app/outputs/flutter-apk/*.apk
             myki_app/build/ios/iphoneos/*.app
 
-  # 3. Create GitHub Release and upload all artifacts
+  # 3. Build Browser Extension (Chrome/Firefox)
+  build-extension:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: package extension
+        run: |
+          cd myki_extension/web-extension
+          # Create zip archives for Chrome and Firefox
+          zip -r myki-chrome.zip . -x "*.git*"
+          cp manifest.json manifest.firefox.json
+          sed -i 's/"manifest_version": 3/"manifest_version": 2/' manifest.firefox.json
+          sed -i 's/_chrome\./_firefox./g' manifest.firefox.json
+          zip -r myki-firefox.zip . -x "*.git*" -x "manifest.json" -x "manifest.firefox.json"
+          mv myki-firefox.zip manifest.firefox.json myki-firefox-temp.zip 2>/dev/null || true
+          cd ..
+          cd web-extension
+          cp manifest.json manifest.firefox.json
+          sed -i 's/"manifest_version": 3/"manifest_version": 2/' manifest.firefox.json
+          sed -i 's/_chrome\./_firefox./g' manifest.firefox.json
+          zip -r ../myki-firefox.zip . -x "*.git*" -x "manifest.json" -x "manifest.firefox.json"
+          rm manifest.firefox.json
+
+      - name: upload extension artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-extension
+          path: |
+            myki_extension/myki-chrome.zip
+            myki_extension/myki-firefox.zip
+
+  # 4. Create GitHub Release and upload all artifacts
   release:
-    needs: [build-desktop, build-mobile]
+    needs: [build-desktop, build-mobile, build-extension]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -124,5 +163,7 @@ jobs:
             **/*.AppImage
             **/*.apk
             **/*.app
+            **/*chrome*.zip
+            **/*firefox*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
