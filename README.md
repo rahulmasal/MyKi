@@ -1,7 +1,7 @@
 # Myki - P2P Password Manager
 
 <p align="center">
-  <img src="myki_app/assets/images/myki_white.jpg" width="200" alt="Myki Logo"/>
+  <img src="myki_app/assets/images/logo.svg" width="200" alt="Myki Logo"/>
 </p>
 
 <p align="center">
