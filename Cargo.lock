@@ -2588,6 +2588,9 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]

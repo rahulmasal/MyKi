@@ -44,3 +44,6 @@ key.properties
 # Test coverage
 coverage/
 *.lcov
+
+# Local plugin forks (using git dependencies instead)
+plugins/
