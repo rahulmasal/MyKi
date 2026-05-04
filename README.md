@@ -16,6 +16,7 @@
 - [Architecture](#architecture)
 - [Projects](#projects)
 - [Security Model](#security-model)
+- [Downloads](#downloads)
 - [Getting Started](#getting-started)
   - [Windows](#-windows)
   - [macOS](#-macos)
@@ -161,6 +162,44 @@ User Password ──► Derive Key ──► Hash Key ──► Store Hash
 ```
 
 **Important**: The master password is NEVER stored. Only a hash of the derived key is stored for verification.
+
+---
+
+## 📦 Downloads
+
+> **Automatic Builds**: All platforms are automatically built and released when a version tag is pushed (`git tag v* && git push`).
+
+### Desktop Apps
+
+| Platform   | File Type               | Download                                                       |
+| ---------- | ----------------------- | -------------------------------------------------------------- |
+| 🪟 Windows | `.exe` (NSIS installer) | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+| 🪟 Windows | `.msi` (MSI installer)  | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+| 🍎 macOS   | `.dmg` (Disk Image)     | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+| 🐧 Linux   | `.deb` (Debian/Ubuntu)  | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+| 🐧 Linux   | `.AppImage` (Universal) | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+
+### Mobile Apps
+
+| Platform   | File Type      | Download                                                       |
+| ---------- | -------------- | -------------------------------------------------------------- |
+| 📱 Android | `.apk`         | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+| 📱 iOS     | `.app` (Xcode) | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+
+### Browser Extensions
+
+| Browser    | File Type | Download                                                       |
+| ---------- | --------- | -------------------------------------------------------------- |
+| 🌐 Chrome  | `.zip`    | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+| 🦊 Firefox | `.zip`    | [GitHub Releases](https://github.com/rahulmasal/MyKi/releases) |
+
+### CLI Tool
+
+Build from source using Rust:
+
+```bash
+cargo install --git https://github.com/rahulmasal/MyKi.git myki_cli
+```
 
 ---
 
