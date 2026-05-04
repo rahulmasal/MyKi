@@ -8,6 +8,9 @@ import 'package:flutter/material.dart'; // Flutter UI framework
 import 'package:flutter/services.dart'; // System services (chrome, orientation)
 import 'package:flutter_bloc/flutter_bloc.dart'; // BLoC state management
 import 'package:local_auth/local_auth.dart'; // Biometric authentication
+import 'dart:io';
+import 'package:logger/logger.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 
 import 'app.dart'; // Root app widget
@@ -15,6 +18,23 @@ import 'core/services/vault_service.dart'; // Vault management
 import 'core/services/biometric_service.dart'; // Biometric auth
 import 'presentation/blocs/auth/auth_bloc.dart'; // Auth state management
 import 'presentation/blocs/vault/vault_bloc.dart'; // Vault state management
+
+// Global logger instance
+late Logger appLogger;
+
+/// Custom log output to write to file
+class FileOutput extends LogOutput {
+  final File file;
+  FileOutput({required this.file});
+
+  @override
+  void output(OutputEvent event) {
+    for (var line in event.lines) {
+      file.writeAsStringSync('${DateTime.now()}: $line\n', mode: FileMode.append);
+      debugPrint(line); // Also print to console
+    }
+  }
+}
 
 /// The entry point of the Myki application.
 ///
@@ -37,6 +57,22 @@ void main() async {
   // asynchronous Flutter features. It ensures the Flutter engine is fully
   // initialized before we do anything async.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize file logger
+  try {
+    final directory = await getApplicationDocumentsDirectory();
+    final logFile = File('${directory.path}/myki_app.log');
+    appLogger = Logger(
+      filter: ProductionFilter(),
+      printer: PrettyPrinter(colors: false, printTime: true),
+      output: FileOutput(file: logFile),
+    );
+    appLogger.i('Application starting...');
+  } catch (e) {
+    debugPrint('Failed to initialize logger: $e');
+    // Fallback logger if file access fails
+    appLogger = Logger(printer: PrettyPrinter());
+  }
 
   // -------------------------------------------------------------------------
   // Step 2: Configure System UI
@@ -91,7 +127,7 @@ void main() async {
   } catch (e) {
     // If the check fails for any reason, log it and assume secure.
     // This prevents false negatives if the detection plugin has issues.
-    debugPrint('Failed to check jailbreak status: $e');
+    appLogger.w('Failed to check jailbreak status: $e');
   }
 
   // -------------------------------------------------------------------------
@@ -108,7 +144,7 @@ void main() async {
   final isDeviceSupported = await localAuth.isDeviceSupported();
 
   // Log for debugging purposes
-  debugPrint(
+  appLogger.i(
     'Biometric availability: $canCheckBiometrics, Device supported: $isDeviceSupported',
   );
 

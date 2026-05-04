@@ -25,6 +25,8 @@ use myki_core::{VaultDatabase, derive_key};
 // Standard library: Path handling for vault file location
 use std::path::PathBuf;
 
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
 // ============================================================================
 // CLI STRUCTURE DEFINITION
 // ============================================================================
@@ -116,6 +118,21 @@ enum Commands {
 /// - Password is incorrect (key derivation or decryption fails)
 /// - Database operations fail
 fn main() -> anyhow::Result<()> {
+    // -----------------------------------------------------------------
+    // Step 0: Initialize Logging
+    // -----------------------------------------------------------------
+    let log_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join("logs");
+    let _ = std::fs::create_dir_all(&log_dir);
+    let file_appender = tracing_appender::rolling::daily(&log_dir, "myki_cli.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with(tracing_subscriber::fmt::layer().with_writer(non_blocking))
+        .init();
+
+    tracing::info!("Myki CLI Started");
+
     // -----------------------------------------------------------------
     // Step 1: Parse Command-Line Arguments
     // -----------------------------------------------------------------

@@ -53,12 +53,22 @@ dependencies:
   csv: ^6.0.0
   flutter_jailbreak_detection: ^1.10.0
   secure_application: ^4.1.0
+  
+  # Logging
+  logger: ^2.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   mocktail: ^1.0.5
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/Myki-logo.png"
+  min_sdk_size: 21
 
 flutter:
   uses-material-design: true
