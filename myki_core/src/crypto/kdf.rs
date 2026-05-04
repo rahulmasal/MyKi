@@ -61,21 +61,21 @@ pub struct Argon2Config {
     pub memory: u32,
     
     /// The number of passes over the memory.
-///     /// 
-///     /// Higher values increase the computational cost. Each iteration processes
-///     /// the entire memory block again. 3 is a good balance.
-///     pub iterations: u32,
+    ///
+    /// Higher values increase the computational cost. Each iteration processes
+    /// the entire memory block again. 3 is a good balance.
+    pub iterations: u32,
     
     /// The number of parallel threads to use.
-///     /// 
-///     /// This should generally match the number of CPU cores available.
-///     /// Using more threads can speed up computation on multi-core systems.
-///     pub parallelism: u32,
+    ///
+    /// This should generally match the number of CPU cores available.
+    /// Using more threads can speed up computation on multi-core systems.
+    pub parallelism: u32,
     
     /// The length of the generated key in bytes.
-///     /// 
-///     /// We generate 64 bytes total: 32 for VaultKey, 32 for MacKey.
-///     pub output_len: usize,
+    ///
+    /// We generate 64 bytes total: 32 for VaultKey, 32 for MacKey.
+    pub output_len: usize,
 }
 
 impl Default for Argon2Config {
