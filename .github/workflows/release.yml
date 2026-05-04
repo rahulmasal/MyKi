@@ -9,6 +9,7 @@ on:
 jobs:
   # 1. Build Desktop (Tauri) for Windows, macOS, and Linux
   build-desktop:
+    name: build-desktop (${{ matrix.platform }})
     permissions:
       contents: write
     strategy:
@@ -53,6 +54,7 @@ jobs:
 
   # 2. Build Mobile (Flutter) for Android and iOS
   build-mobile:
+    name: build-mobile (${{ matrix.target }})
     permissions:
       contents: write
     strategy:
