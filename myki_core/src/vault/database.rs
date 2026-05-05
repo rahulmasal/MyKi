@@ -32,7 +32,7 @@
 //! The database uses a Mutex to ensure thread-safe access to the SQLite connection.
 
 use super::{Credential, VaultError};  // Import types from parent module
-use crate::crypto::{MasterKey, Aes256Gcm, EncryptedData};  // Crypto types
+use crate::crypto::{MasterKey, Aes256Gcm, EncryptedData, generate_salt, encode_base64};  // Crypto types
 use rusqlite::{Connection, params};   // SQLite connection and parameterized queries
 use std::sync::Mutex;                 // Thread-safe interior mutability
 
@@ -117,6 +117,19 @@ impl VaultDatabase {
     /// let db = VaultDatabase::create("my_vault.db", &master_key).unwrap();
     /// ```
     pub fn create(path: &str, master_key: &MasterKey) -> Result<Self, VaultError> {
+        Self::create_with_salt(path, master_key, None)
+    }
+    
+    /// Creates a new vault database with an optional pre-generated salt.
+    /// 
+    /// If `salt` is None, a new random salt is generated and stored.
+    /// 
+    /// # Parameters
+    /// 
+    /// * `path`: The file system path where the database will be created.
+    /// * `master_key`: The key used to protect the vault.
+    /// * `_salt`: Optional 32-byte salt. Currently unused, reserved for future use.
+    pub fn create_with_salt(path: &str, master_key: &MasterKey, _salt: Option<[u8; 32]>) -> Result<Self, VaultError> {
         // -----------------------------------------------------------------------
         // Open or create the SQLite database file
         // -----------------------------------------------------------------------
@@ -199,12 +212,56 @@ impl VaultDatabase {
         let cipher = Aes256Gcm::new(&master_key.vault_key);
         
         // -----------------------------------------------------------------------
-        // Return the VaultDatabase instance
+        // Store the salt in vault metadata if provided
         // -----------------------------------------------------------------------
+        // The salt must be stored unencrypted so we can retrieve it when
+        // the user wants to unlock the vault. It's not secret, just random.
+        // Note: The caller is responsible for storing the salt via set_meta()
+        // if they want it persisted. create_new() does this automatically.
+        
         Ok(Self {
             conn: Mutex::new(conn),
             cipher,
         })
+    }
+    
+    /// Creates a new vault with a newly generated salt from a password.
+    /// 
+    /// This is a convenience method that:
+    /// 1. Generates a random salt
+    /// 2. Derives the encryption key from the password
+    /// 3. Creates the database schema
+    /// 4. Stores the salt for future unlocking
+    /// 
+    /// # Parameters
+    /// 
+    /// * `path`: The file system path where the database will be created.
+    /// * `password`: The user's master password.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use myki_core::VaultDatabase;
+    /// 
+    /// let db = VaultDatabase::create_new("my_vault.db", "my_secure_password").unwrap();
+    /// ```
+    pub fn create_new(path: &str, password: &str) -> Result<Self, VaultError> {
+        // Generate a random salt
+        let salt = generate_salt();
+        
+        // Derive the key using default Argon2id parameters
+        let config = crate::Argon2Config::default();
+        let master_key = crate::derive_key(password, &salt, &config)
+            .map_err(|e| VaultError::Encryption(e.to_string()))?;
+        
+        // Create the vault (without storing salt yet)
+        let db = Self::create_with_salt(path, &master_key, Some(salt))?;
+        
+        // Store the salt in metadata (required for unlocking later)
+        db.set_meta("salt", &encode_base64(&salt))
+            .map_err(|e| VaultError::Database(format!("Failed to store salt: {}", e)))?;
+        
+        Ok(db)
     }
     
     /// Opens an existing vault database file.

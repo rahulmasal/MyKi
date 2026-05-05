@@ -61,6 +61,18 @@ struct Cli {
 /// Clap automatically generates help text and shell completion scripts.
 #[derive(Subcommand)]
 enum Commands {
+    /// Create a new vault database.
+    /// 
+    /// Prompts for a master password and creates an encrypted vault
+    /// at the specified path. Use this before adding credentials.
+    Create {
+        /// Optional path for the vault database.
+        /// 
+        /// Defaults to 'vault.db' in the current directory.
+        #[arg(short, long, value_name = "FILE")]
+        vault: Option<PathBuf>,
+    },
+    
     /// List all credentials in the vault.
     /// 
     /// Displays a formatted table of all stored credentials showing
@@ -142,11 +154,12 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // -----------------------------------------------------------------
-    // Step 2: Validate Vault File Exists
+    // Step 2: Validate Vault File Exists (for non-create commands)
     // -----------------------------------------------------------------
     // Check if the vault database file exists before attempting to open it.
     // PathBuf::exists() performs filesystem lookup without opening the file.
-    if !cli.vault.exists() {
+    // Skip this check for the Create command.
+    if !matches!(&cli.command, Commands::Create { .. }) && !cli.vault.exists() {
         // Return early with formatted error message.
         // anyhow::anyhow! creates an error type that supports chaining.
         return Err(anyhow::anyhow!(
@@ -169,6 +182,48 @@ fn main() -> anyhow::Result<()> {
     // This prevents the password from being visible on screen.
     let password = read_password()?;
 
+    // -----------------------------------------------------------------
+    // Step 4: Handle Create Command Separately
+    // -----------------------------------------------------------------
+    // The Create command doesn't need a vault file to exist yet.
+    // We handle it before the unlock flow.
+    if let Commands::Create { vault } = &cli.command {
+        let vault_path = vault.clone().unwrap_or_else(|| PathBuf::from("vault.db"));
+        
+        // Check if vault already exists
+        if vault_path.exists() {
+            return Err(anyhow::anyhow!(
+                "Vault already exists at {:?}. Delete it first to create a new one.",
+                vault_path
+            ));
+        }
+        
+        // Prompt for master password
+        print!("Enter new master password: ");
+        std::io::Write::flush(&mut std::io::stdout())?;
+        let password = read_password()?;
+        
+        print!("Confirm master password: ");
+        std::io::Write::flush(&mut std::io::stdout())?;
+        let confirm = read_password()?;
+        
+        if password != confirm {
+            return Err(anyhow::anyhow!("Passwords do not match."));
+        }
+        
+        if password.len() < 8 {
+            return Err(anyhow::anyhow!("Password must be at least 8 characters."));
+        }
+        
+        // Create the vault
+        let db = VaultDatabase::create_new(vault_path.to_str().unwrap(), &password)
+            .map_err(|e| anyhow::anyhow!("Failed to create vault: {}", e))?;
+        
+        db.close();
+        println!("Vault created successfully at {:?}", vault_path);
+        return Ok(());
+    }
+    
     // -----------------------------------------------------------------
     // Step 4: Derive Encryption Key from Password
     // -----------------------------------------------------------------
@@ -317,6 +372,10 @@ fn main() -> anyhow::Result<()> {
             // Confirm success to the user.
             println!("Successfully added {} to vault.", title);
         }
+        
+        // This branch is unreachable because Create is handled earlier,
+        // but we need it for exhaustive pattern matching.
+        Commands::Create { .. } => unreachable!(),
     }
 
     // -----------------------------------------------------------------
