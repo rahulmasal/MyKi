@@ -44,11 +44,11 @@ jobs:
       - name: build tauri
         run: |
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
-            cargo tauri build --bundler --bundles dmg
+            cargo tauri build --bundles dmg
           elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            cargo tauri build --bundler --bundles msi
+            cargo tauri build --bundles msi
           elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
-            cargo tauri build --bundler --bundles deb
+            cargo tauri build --bundles deb
           fi
         working-directory: myki_extension/src-tauri
 
