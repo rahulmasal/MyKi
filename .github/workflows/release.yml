@@ -16,53 +16,31 @@ jobs:
   # ---------------------------------------------------------
   build-desktop:
     name: build-desktop (${{ matrix.platform }})
-    # We need permission to write (upload) files back to the GitHub Releases page.
     permissions:
       contents: write
     
     # A 'matrix' tells GitHub to run this exact same job multiple times on different computers.
-    # In this case, we are renting 3 computers: a Mac, an Ubuntu (Linux) machine, and a Windows PC.
     strategy:
-      fail-fast: false # If Windows fails, don't cancel Mac and Linux! Keep going.
+      fail-fast: false
       matrix:
         platform: [macos-latest, ubuntu-22.04, windows-latest]
     
-    # This variable determines which cloud computer this current run is using.
     runs-on: ${{ matrix.platform }}
     steps:
-      # Step 1: Download all the code from our repository onto the cloud computer.
       - uses: actions/checkout@v4
 
-      # Debug: list repository files
-      - name: List repo files
-        run: |
-          echo "--- Repository root ---"
-          ls -R .
-          echo "--- End of listing ---"
-
-
-      # Step 2: Install Node.js (needed for the web part of our Tauri app).
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      # Step 3: Install the Rust programming language (needed for the core vault logic).
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      # Step 4: If we are on Linux, we need some extra system libraries to build graphical apps.
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      # Step 5: Install the Tauri Command Line Tool.
       - name: install tauri-cli
-        run: cargo install tauri-cli
+        run: cargo install tauri-cli --locked
 
-      # Step 6: Actually build the app! This takes the code and compiles it into an executable file.
       - name: build tauri
         run: cargo tauri build
         working-directory: myki_extension/src-tauri
@@ -71,12 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.platform }}
-          path: |
-            myki_extension/src-tauri/target/release/bundle/msi/*.msi
-            myki_extension/src-tauri/target/release/bundle/nsis/*.exe
-            myki_extension/src-tauri/target/release/bundle/dmg/*.dmg
-            myki_extension/src-tauri/target/release/bundle/deb/*.deb
-            myki_extension/src-tauri/target/release/bundle/appimage/*.AppImage
+          path: myki_extension/src-tauri/target/release/bundle/**/*
 
   # 2. Build Mobile (Flutter) for Android and iOS
   build-mobile:
@@ -151,20 +124,12 @@ jobs:
       - name: package extension
         run: |
           cd myki_extension/web-extension
-          # Create zip archives for Chrome and Firefox
           zip -r ../myki-chrome.zip . -x "*.git*"
-          
-          # Prepare Firefox manifest
           cp manifest.json manifest.firefox.json
           sed -i 's/"manifest_version": 3/"manifest_version": 2/' manifest.firefox.json
           sed -i 's/_chrome\./_firefox./g' manifest.firefox.json
-          
-          # Create Firefox zip without Chrome manifest, and add Firefox manifest as the real manifest.json inside the zip
           zip -r ../myki-firefox.zip . -x "*.git*" -x "manifest.json"
-          # Rename the firefox manifest inside the zip to manifest.json
           printf "@ manifest.firefox.json\n@=manifest.json\n" | zipnote -w ../myki-firefox.zip
-          
-          # Clean up
           rm manifest.firefox.json
 
       - name: upload extension artifacts
@@ -196,8 +161,6 @@ jobs:
             **/*.deb
             **/*.AppImage
             **/*.apk
-            **/*myki-ios.zip
-            **/*chrome*.zip
-            **/*firefox*.zip
+            **/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
