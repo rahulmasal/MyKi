@@ -7,21 +7,25 @@ import '../../core/services/clipboard_service.dart';
 /// A widget that displays a single credential entry in a list.
 ///
 /// Shows the credential's title and username, and provides quick actions
-/// like copying the password to the clipboard or deleting the entry.
+/// like copying the password to the clipboard, toggling favorite, or deleting the entry.
 class CredentialTile extends StatelessWidget {
   final Credential credential;
-  
+
   /// Callback triggered when the tile is tapped (e.g., to view details).
   final VoidCallback onTap;
-  
+
   /// Callback triggered when the delete action is initiated.
   final VoidCallback onDelete;
+
+  /// Optional callback for toggling favorite status.
+  final VoidCallback? onToggleFavorite;
 
   const CredentialTile({
     super.key,
     required this.credential,
     required this.onTap,
     required this.onDelete,
+    this.onToggleFavorite,
   });
 
   @override
@@ -49,39 +53,65 @@ class CredentialTile extends StatelessWidget {
             child: Row(
               children: [
                 // Premium Icon Container: Displays the first letter of the title
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        MykiAppTheme.primaryColor.withValues(alpha: 0.15),
-                        MykiAppTheme.primaryColor.withValues(alpha: 0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: MykiAppTheme.primaryColor.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      credential.title.isNotEmpty
-                          ? credential.title[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: MykiAppTheme.primaryColor,
+                Stack(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            MykiAppTheme.primaryColor.withValues(alpha: 0.15),
+                            MykiAppTheme.primaryColor.withValues(alpha: 0.05),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: MykiAppTheme.primaryColor.withValues(
+                            alpha: 0.1,
+                          ),
+                          width: 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          credential.title.isNotEmpty
+                              ? credential.title[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: MykiAppTheme.primaryColor,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    // Favorite indicator
+                    if (credential.favorite)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: MykiAppTheme.errorColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.favorite,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Title and username text section
                 Expanded(
                   child: Column(
@@ -111,11 +141,24 @@ class CredentialTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                
-                // Quick Actions: Copy and Delete
+
+                // Quick Actions: Favorite, Copy and Delete
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _ActionButton(
+                      icon: credential.favorite
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      onPressed: onToggleFavorite ?? () {},
+                      tooltip: credential.favorite
+                          ? 'Remove from favorites'
+                          : 'Add to favorites',
+                      color: credential.favorite
+                          ? MykiAppTheme.errorColor
+                          : MykiAppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
                     _ActionButton(
                       icon: Icons.copy_rounded,
                       onPressed: () => _copyPassword(context),
@@ -187,10 +230,7 @@ class _ActionButton extends StatelessWidget {
         color: color,
         onPressed: onPressed,
         tooltip: tooltip,
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
-        ),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         padding: EdgeInsets.zero,
       ),
     );

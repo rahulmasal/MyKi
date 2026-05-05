@@ -30,7 +30,10 @@ class FileOutput extends LogOutput {
   @override
   void output(OutputEvent event) {
     for (var line in event.lines) {
-      file.writeAsStringSync('${DateTime.now()}: $line\n', mode: FileMode.append);
+      file.writeAsStringSync(
+        '${DateTime.now()}: $line\n',
+        mode: FileMode.append,
+      );
       debugPrint(line); // Also print to console
     }
   }
@@ -172,7 +175,7 @@ void main() async {
         // VaultBloc: Manages the credential vault state.
         // It handles loading, adding, updating, deleting credentials.
         BlocProvider<VaultBloc>(
-          create: (_) => VaultBloc(), // No external dependencies needed
+          create: (_) => VaultBloc(vaultService: vaultService),
         ),
       ],
       child: isJailbroken

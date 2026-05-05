@@ -18,14 +18,19 @@ class VaultLoadCredentials extends VaultEvent {}
 class VaultAddCredential extends VaultEvent {
   /// The descriptive name for this credential entry (e.g., "Google").
   final String title;
+
   /// The username associated with the account.
   final String username;
+
   /// The password for the account.
   final String password;
+
   /// Optional URL for the service's login page.
   final String? url;
+
   /// Optional additional information or context.
   final String? notes;
+
   /// Optional TOTP secret for 2FA.
   final String? totpSecret;
 
@@ -39,7 +44,14 @@ class VaultAddCredential extends VaultEvent {
   });
 
   @override
-  List<Object?> get props => [title, username, password, url, notes, totpSecret];
+  List<Object?> get props => [
+    title,
+    username,
+    password,
+    url,
+    notes,
+    totpSecret,
+  ];
 }
 
 /// Dispatched when the user updates an existing credential entry.
@@ -51,6 +63,7 @@ class VaultUpdateCredential extends VaultEvent {
   final String password;
   final String? url;
   final String? notes;
+
   /// Optional TOTP secret for 2FA.
   final String? totpSecret;
 
@@ -65,7 +78,15 @@ class VaultUpdateCredential extends VaultEvent {
   });
 
   @override
-  List<Object?> get props => [id, title, username, password, url, notes, totpSecret];
+  List<Object?> get props => [
+    id,
+    title,
+    username,
+    password,
+    url,
+    notes,
+    totpSecret,
+  ];
 }
 
 /// Dispatched when the user removes a credential from their vault.
@@ -88,4 +109,15 @@ class VaultSearchCredentials extends VaultEvent {
 
   @override
   List<Object?> get props => [query];
+}
+
+/// Dispatched when the user toggles the favorite status of a credential.
+class VaultToggleFavorite extends VaultEvent {
+  /// Unique identifier of the credential to toggle favorite status.
+  final String credentialId;
+
+  const VaultToggleFavorite(this.credentialId);
+
+  @override
+  List<Object?> get props => [credentialId];
 }

@@ -9,6 +9,7 @@ import '../blocs/vault/vault_event.dart';
 import '../blocs/vault/vault_state.dart';
 import '../widgets/credential_tile.dart';
 import 'add_credential_page.dart';
+import 'credential_detail_page.dart';
 import 'unlock_page.dart';
 
 /// The main dashboard page displaying the user's stored credentials.
@@ -45,7 +46,8 @@ class _VaultPageState extends State<VaultPage> {
     context.read<AuthBloc>().add(AuthLock());
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const UnlockPage(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const UnlockPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -55,9 +57,9 @@ class _VaultPageState extends State<VaultPage> {
 
   /// Navigates to the [AddCredentialPage] to allow the user to create a new entry.
   void _addCredential() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddCredentialPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddCredentialPage()));
   }
 
   @override
@@ -111,10 +113,13 @@ class _VaultPageState extends State<VaultPage> {
                 ],
               ),
             ),
-            
+
             // Search Bar with shadow and interactive suffix icon
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 12.0,
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   boxShadow: [
@@ -130,13 +135,21 @@ class _VaultPageState extends State<VaultPage> {
                   style: const TextStyle(fontWeight: FontWeight.w500),
                   decoration: InputDecoration(
                     hintText: 'Search credentials...',
-                    prefixIcon: const Icon(Icons.search_rounded, color: MykiAppTheme.textHint),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: MykiAppTheme.textHint,
+                    ),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.close_rounded, color: MykiAppTheme.textHint),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: MykiAppTheme.textHint,
+                            ),
                             onPressed: () {
                               _searchController.clear();
-                              context.read<VaultBloc>().add(const VaultSearchCredentials(''));
+                              context.read<VaultBloc>().add(
+                                const VaultSearchCredentials(''),
+                              );
                               FocusScope.of(context).unfocus();
                             },
                           )
@@ -144,13 +157,17 @@ class _VaultPageState extends State<VaultPage> {
                   ),
                   onChanged: (value) {
                     // Update the search query in the BLoC on every character change
-                    context.read<VaultBloc>().add(VaultSearchCredentials(value));
-                    setState(() {}); // Refresh UI to toggle clear button visibility
+                    context.read<VaultBloc>().add(
+                      VaultSearchCredentials(value),
+                    );
+                    setState(
+                      () {},
+                    ); // Refresh UI to toggle clear button visibility
                   },
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 8),
 
             // Main Credential List area
@@ -160,7 +177,7 @@ class _VaultPageState extends State<VaultPage> {
                   if (state is VaultLoading) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  
+
                   if (state is VaultError) {
                     // Error state with illustrative icon and message
                     return Center(
@@ -170,10 +187,16 @@ class _VaultPageState extends State<VaultPage> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: MykiAppTheme.errorColor.withValues(alpha: 0.1),
+                              color: MykiAppTheme.errorColor.withValues(
+                                alpha: 0.1,
+                              ),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.error_outline_rounded, size: 48, color: MykiAppTheme.errorColor),
+                            child: const Icon(
+                              Icons.error_outline_rounded,
+                              size: 48,
+                              color: MykiAppTheme.errorColor,
+                            ),
                           ),
                           const SizedBox(height: 24),
                           Text(
@@ -189,14 +212,14 @@ class _VaultPageState extends State<VaultPage> {
                       ),
                     );
                   }
-                  
+
                   if (state is VaultLoaded) {
                     final credentials = state.filteredCredentials;
-                    
+
                     if (credentials.isEmpty) {
                       return _buildEmptyState(state.searchQuery.isEmpty);
                     }
-                    
+
                     // List of credentials using a modern tile design
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
@@ -209,9 +232,24 @@ class _VaultPageState extends State<VaultPage> {
                           child: CredentialTile(
                             credential: credential,
                             onTap: () {
-                              // Action for viewing details or editing
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider.value(
+                                    value: context.read<VaultBloc>(),
+                                    child: CredentialDetailPage(
+                                      credential: credential,
+                                    ),
+                                  ),
+                                ),
+                              );
                             },
-                            onDelete: () => _showDeleteConfirmation(credential.id),
+                            onDelete: () =>
+                                _showDeleteConfirmation(credential.id),
+                            onToggleFavorite: () {
+                              context.read<VaultBloc>().add(
+                                VaultToggleFavorite(credential.id),
+                              );
+                            },
                           ),
                         );
                       },
@@ -256,7 +294,9 @@ class _VaultPageState extends State<VaultPage> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isCompletelyEmpty ? Icons.vpn_key_rounded : Icons.search_off_rounded,
+              isCompletelyEmpty
+                  ? Icons.vpn_key_rounded
+                  : Icons.search_off_rounded,
               size: 64,
               color: MykiAppTheme.primaryColor.withValues(alpha: 0.5),
             ),
@@ -304,9 +344,16 @@ class _VaultPageState extends State<VaultPage> {
                 ),
               ),
               const SizedBox(height: 32),
-              const Icon(Icons.warning_amber_rounded, size: 48, color: MykiAppTheme.errorColor),
+              const Icon(
+                Icons.warning_amber_rounded,
+                size: 48,
+                color: MykiAppTheme.errorColor,
+              ),
               const SizedBox(height: 16),
-              Text('Delete Credential?', style: Theme.of(context).textTheme.headlineLarge),
+              Text(
+                'Delete Credential?',
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
               const SizedBox(height: 12),
               Text(
                 'This action cannot be undone. The credential will be permanently removed from your vault.',
@@ -321,17 +368,24 @@ class _VaultPageState extends State<VaultPage> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         side: BorderSide(color: Colors.blueGrey.shade200),
                       ),
-                      child: Text('Cancel', style: TextStyle(color: MykiAppTheme.textPrimary)),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(color: MykiAppTheme.textPrimary),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        context.read<VaultBloc>().add(VaultDeleteCredential(credentialId));
+                        context.read<VaultBloc>().add(
+                          VaultDeleteCredential(credentialId),
+                        );
                         Navigator.of(context).pop();
                       },
                       style: ElevatedButton.styleFrom(
