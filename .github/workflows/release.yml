@@ -42,14 +42,7 @@ jobs:
         run: cargo install tauri-cli --locked
 
       - name: build tauri
-        run: |
-          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
-            cargo tauri build --bundles dmg
-          elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            cargo tauri build --bundles msi
-          elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
-            cargo tauri build --bundles deb
-          fi
+        run: cargo tauri build
         working-directory: myki_extension/src-tauri
 
       - name: upload desktop artifacts

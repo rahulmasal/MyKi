@@ -30,6 +30,7 @@
   },
   "bundle": {
     "active": true,
+    "targets": "all",
     "icon": [
       "../icons/myki-logo.png"
     ],
