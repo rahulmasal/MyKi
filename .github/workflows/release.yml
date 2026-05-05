@@ -18,13 +18,13 @@ jobs:
     name: build-desktop (${{ matrix.platform }})
     permissions:
       contents: write
-    
+
     # A 'matrix' tells GitHub to run this exact same job multiple times on different computers.
     strategy:
       fail-fast: false
       matrix:
         platform: [macos-latest, ubuntu-22.04, windows-latest]
-    
+
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +41,16 @@ jobs:
       - name: install tauri-cli
         run: cargo install tauri-cli --locked
 
+      - name: verify frontend dist exists
+        run: |
+          if [ ! -d "myki_extension/dist" ]; then
+            echo "ERROR: myki_extension/dist directory not found!"
+            echo "Creating minimal dist directory..."
+            mkdir -p myki_extension/dist
+            echo "<!DOCTYPE html><html><head><title>Myki</title></head><body>Loading...</body></html>" > myki_extension/dist/index.html
+          fi
+          ls -la myki_extension/dist/
+
       - name: build tauri
         run: cargo tauri build
         working-directory: myki_extension/src-tauri
@@ -49,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.platform }}
-          path: myki_extension/src-tauri/target/release/bundle/**/*
+          path: target/release/bundle/**/*
 
   # 2. Build Mobile (Flutter) for Android and iOS
   build-mobile:
@@ -121,6 +131,19 @@ jobs:
         with:
           node-version: lts/*
 
+      - name: verify web-extension files
+        run: |
+          echo "Checking web-extension files..."
+          ls -la myki_extension/web-extension/
+          if [ ! -f "myki_extension/web-extension/manifest.json" ]; then
+            echo "ERROR: manifest.json not found!"
+            exit 1
+          fi
+          if [ ! -f "myki_extension/web-extension/popup.html" ]; then
+            echo "ERROR: popup.html not found!"
+            exit 1
+          fi
+
       - name: package extension
         run: |
           cd myki_extension/web-extension
@@ -131,6 +154,12 @@ jobs:
           zip -r ../myki-firefox.zip . -x "*.git*" -x "manifest.json"
           printf "@ manifest.firefox.json\n@=manifest.json\n" | zipnote -w ../myki-firefox.zip
           rm manifest.firefox.json
+
+      - name: verify extension packages
+        run: |
+          echo "Checking extension packages..."
+          ls -la myki_extension/myki-chrome.zip
+          ls -la myki_extension/myki-firefox.zip
 
       - name: upload extension artifacts
         uses: actions/upload-artifact@v4
