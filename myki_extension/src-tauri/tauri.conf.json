@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "deb,msi,dmg",
     "icon": [
       "../icons/myki-logo.png"
     ],
