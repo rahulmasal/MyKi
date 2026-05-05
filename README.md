@@ -45,33 +45,45 @@
 
 ### High-Level Overview
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                           Myki Architecture                          │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌───────────────────┐ │
-│  │   Flutter App   │    │    CLI Tool    │    │  Browser Ext      │ │
-│  │   (Mobile)      │    │   (Terminal)   │    │ (Tauri+WebExt)   │ │
-│  └────────┬────────┘    └────────┬────────┘    └─────────┬─────────┘ │
-│           │                      │                      │             │
-│           └──────────────────────┼──────────────────────┘             │
-│                                  │                                    │
-│                          ┌───────▼───────┐                          │
-│                          │   FFI Bridge  │                          │
-│                          └───────┬───────┘                          │
-│                                  │                                   │
-│         ┌────────────────────────┴────────────────────────┐          │
-│         │                                                 │          │
-│         │              myki_core (Rust)                    │          │
-│         │  ┌──────────────┐ ┌──────────────┐ ┌─────────┐  │          │
-│         │  │   crypto/    │ │    totp/     │ │ vault/  │  │          │
-│         │  │  KDF, Keys  │ │  Generator   │ │Database │  │          │
-│         │  │  AES-GCM    │ │  RFC 6238    │ │ Models  │  │          │
-│         │  └──────────────┘ └──────────────┘ └─────────┘  │          │
-│         └─────────────────────────────────────────────────┘          │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Clients
+        A[iOS App]
+        B[Android App]
+        C[CLI Tool]
+        D[Browser Extension]
+    end
+
+    subgraph Core["Flutter / Rust Core Logic"]
+        E{Security Engine}
+        F[AES-256-GCM Encryption]
+        G[Argon2id KDF]
+        H[TOTP Generator]
+    end
+
+    subgraph Storage
+        I[(SQLite Vault)]
+    end
+
+    subgraph Network["Sync Layer"]
+        J[WebRTC DataChannel]
+        K[Signaling Server]
+    end
+
+    A --> E
+    B --> E
+    C --> E
+    D --> E
+    E --> F
+    E --> G
+    E --> H
+    F --> I
+    G --> I
+    J --> K
+    A <--> J
+    B <--> J
+    C <--> J
+    D <--> J
 ```
 
 ### Data Flow
@@ -140,9 +152,13 @@ Tauri-based browser extension for auto-fill functionality.
 
 ### Key Derivation (Argon2id)
 
-```
-Master Password + Random Salt ──► Argon2id KDF ──► 256-bit Vault Key
-                                    (64 MiB, 3 iterations)
+```mermaid
+flowchart LR
+    A[Master Password] --> C[Random Salt]
+    C --> D[Argon2id KDF]
+    D --> E[256-bit Vault Key]
+    style D fill:#f96,stroke:#333
+    style E fill:#090,stroke:#333
 ```
 
 **Why Argon2id?**
@@ -153,8 +169,13 @@ Master Password + Random Salt ──► Argon2id KDF ──► 256-bit Vault Key
 
 ### Encryption (AES-256-GCM)
 
-```
-Plaintext + Vault Key + Random Nonce ──► AES-256-GCM ──► Ciphertext + Auth Tag
+```mermaid
+flowchart LR
+    A[Plaintext] --> D[AES-256-GCM]
+    B[Vault Key] --> D
+    C[Random Nonce] --> D
+    D --> E[Ciphertext + Auth Tag]
+    style D fill:#f96,stroke:#333
 ```
 
 **Why GCM?**
@@ -165,11 +186,14 @@ Plaintext + Vault Key + Random Nonce ──► AES-256-GCM ──► Ciphertext 
 
 ### Password Storage
 
-```
-User Password ──► Derive Key ──► Hash Key ──► Store Hash
-                                     │
-                                     ▼
-                            Verification on unlock
+```mermaid
+flowchart TD
+    A[User Password] --> B[Derive Key]
+    B --> C[Hash Key]
+    C --> D[(Stored Hash)]
+    A -.->|Verify| E[Unlock]
+    D -.->|Compare| E
+    style D fill:#f66,stroke:#333
 ```
 
 **Important**: The master password is NEVER stored. Only a hash of the derived key is stored for verification.
