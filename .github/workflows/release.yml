@@ -42,7 +42,7 @@ jobs:
         run: cargo install tauri-cli --locked
 
       - name: build tauri
-        run: cargo tauri build
+        run: cargo tauri build --locked
         working-directory: myki_extension/src-tauri
 
       - name: upload desktop artifacts
