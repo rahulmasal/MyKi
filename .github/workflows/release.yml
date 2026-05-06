@@ -38,18 +38,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
       - name: install tauri-cli
         run: cargo install tauri-cli --locked
 
-      - name: verify frontend dist exists
+      - name: create frontend dist if missing
         run: |
-          if [ ! -d "myki_extension/dist" ]; then
-            echo "ERROR: myki_extension/dist directory not found!"
-            echo "Creating minimal dist directory..."
-            mkdir -p myki_extension/dist
-            echo "<!DOCTYPE html><html><head><title>Myki</title></head><body>Loading...</body></html>" > myki_extension/dist/index.html
-          fi
-          ls -la myki_extension/dist/
+          mkdir -p myki_extension/dist
+          cat > myki_extension/dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Myki</title>
+          </head>
+          <body>
+            <div id="app">Loading...</div>
+          </body>
+          </html>
+          EOF
 
       - name: build tauri
         run: cargo tauri build
@@ -102,6 +114,13 @@ jobs:
           mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/myki-android.apk
         working-directory: myki_app
 
+      - name: upload android artifact
+        if: matrix.target == 'apk'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-android
+          path: myki_app/build/app/outputs/flutter-apk/myki-android.apk
+
       - name: build ios
         if: matrix.target == 'ios'
         run: |
@@ -110,13 +129,12 @@ jobs:
           zip -r myki-ios.zip Runner.app
         working-directory: myki_app
 
-      - name: upload mobile artifacts
+      - name: upload ios artifact
+        if: matrix.target == 'ios'
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-${{ matrix.target }}
-          path: |
-            myki_app/build/app/outputs/flutter-apk/myki-android.apk
-            myki_app/build/ios/iphoneos/myki-ios.zip
+          name: mobile-ios
+          path: myki_app/build/ios/iphoneos/myki-ios.zip
 
   # 3. Build Browser Extension (Chrome/Firefox)
   build-extension:
@@ -151,8 +169,7 @@ jobs:
           cp manifest.json manifest.firefox.json
           sed -i 's/"manifest_version": 3/"manifest_version": 2/' manifest.firefox.json
           sed -i 's/_chrome\./_firefox./g' manifest.firefox.json
-          zip -r ../myki-firefox.zip . -x "*.git*" -x "manifest.json"
-          printf "@ manifest.firefox.json\n@=manifest.json\n" | zipnote -w ../myki-firefox.zip
+          zip -r ../myki-firefox.zip . -x "*.git*" -x "manifest.json" "popup.js"
           rm manifest.firefox.json
 
       - name: verify extension packages
@@ -184,11 +201,16 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            **/*.msi
-            **/*.exe
-            **/*.dmg
-            **/*.deb
-            **/*.apk
-            **/*.zip
+            desktop-windows-latest/**/*.exe
+            desktop-windows-latest/**/*.msi
+            desktop-macos-latest/**/*.dmg
+            desktop-macos-latest/**/*.zip
+            desktop-ubuntu-22.04/**/*.deb
+            desktop-ubuntu-22.04/**/*.rpm
+            desktop-ubuntu-22.04/**/*.tar.gz
+            mobile-android/myki-android.apk
+            mobile-ios/myki-ios.zip
+            browser-extension/myki-chrome.zip
+            browser-extension/myki-firefox.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
