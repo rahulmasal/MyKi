@@ -47,6 +47,7 @@ jobs:
         run: cargo install tauri-cli --locked
 
       - name: create frontend dist if missing
+        shell: bash
         run: |
           mkdir -p myki_extension/dist
           cat > myki_extension/dist/index.html << 'EOF'
