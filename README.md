@@ -1,12 +1,10 @@
+<div align="center">
+
 # Myki - P2P Password Manager
-
-<p align="center">
-  <img src="myki_extension/src-tauri/icons/myki-logo.png" width="200" alt="Myki Logo"/>
-</p>
-
-<p align="center">
+  <img src="myki_extension/src-tauri/icons/myki-logo.png" width="200" alt="Myki Logo" style="display:block;margin:0 auto"/>
   <strong>A secure, local-first password manager with peer-to-peer sync</strong>
-</p>
+
+</div>
 
 ---
 
