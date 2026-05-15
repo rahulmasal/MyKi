@@ -153,15 +153,8 @@ fn main() -> anyhow::Result<()> {
     // generates structured error messages for invalid inputs.
     let cli = Cli::parse();
 
-    // -----------------------------------------------------------------
-    // Step 2: Validate Vault File Exists (for non-create commands)
-    // -----------------------------------------------------------------
-    // Check if the vault database file exists before attempting to open it.
-    // PathBuf::exists() performs filesystem lookup without opening the file.
-    // Skip this check for the Create command.
     if !matches!(&cli.command, Commands::Create { .. }) && !cli.vault.exists() {
-        // Return early with formatted error message.
-        // anyhow::anyhow! creates an error type that supports chaining.
+        tracing::error!("Vault not found at {:?}", cli.vault);
         return Err(anyhow::anyhow!(
             "Vault does not exist at {:?}. Use 'create' command first.", 
             cli.vault
@@ -190,15 +183,14 @@ fn main() -> anyhow::Result<()> {
     if let Commands::Create { vault } = &cli.command {
         let vault_path = vault.clone().unwrap_or_else(|| PathBuf::from("vault.db"));
         
-        // Check if vault already exists
         if vault_path.exists() {
+            tracing::error!("Vault already exists at {:?}", vault_path);
             return Err(anyhow::anyhow!(
                 "Vault already exists at {:?}. Delete it first to create a new one.",
                 vault_path
             ));
         }
         
-        // Prompt for master password
         print!("Enter new master password: ");
         std::io::Write::flush(&mut std::io::stdout())?;
         let password = read_password()?;
@@ -208,18 +200,23 @@ fn main() -> anyhow::Result<()> {
         let confirm = read_password()?;
         
         if password != confirm {
+            tracing::error!("Passwords do not match during vault creation");
             return Err(anyhow::anyhow!("Passwords do not match."));
         }
         
         if password.len() < 8 {
+            tracing::error!("Password too short: {} characters", password.len());
             return Err(anyhow::anyhow!("Password must be at least 8 characters."));
         }
         
-        // Create the vault
         let db = VaultDatabase::create_new(vault_path.to_str().unwrap(), &password)
-            .map_err(|e| anyhow::anyhow!("Failed to create vault: {}", e))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create vault: {}", e);
+                anyhow::anyhow!("Failed to create vault: {}", e)
+            })?;
         
         db.close();
+        tracing::info!("Vault created successfully at {:?}", vault_path);
         println!("Vault created successfully at {:?}", vault_path);
         return Ok(());
     }
@@ -231,7 +228,10 @@ fn main() -> anyhow::Result<()> {
     // The salt is stored unencrypted in the vault_meta table.
     // This is safe because the salt is not secret (only the password is).
     let conn = rusqlite::Connection::open(cli.vault.to_str().unwrap())
-        .map_err(|e| anyhow::anyhow!("Failed to open vault database: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to open vault database: {}", e);
+            anyhow::anyhow!("Failed to open vault database: {}", e)
+        })?;
     
     // Query the vault_meta table for the salt value.
     // The salt is stored as a Base64-encoded string.
@@ -243,10 +243,13 @@ fn main() -> anyhow::Result<()> {
     let salt_b64: String = conn.query_row(
         "SELECT value FROM vault_meta WHERE key = 'salt'",
         [],
-        |row| row.get(0),  // Get first (and only) column
-    ).map_err(|e| anyhow::anyhow!(
-        "Failed to get salt from vault: {}. Is the password correct?", e
-    ))?;
+        |row| row.get(0),
+    ).map_err(|e| {
+        tracing::error!("Failed to read salt from vault: {}", e);
+        anyhow::anyhow!(
+            "Failed to get salt from vault: {}. Is the password correct?", e
+        )
+    })?;
     
     // Close the database connection before reopening with encrypted access.
     // This is required because SQLite doesn't support concurrent access
@@ -261,11 +264,13 @@ fn main() -> anyhow::Result<()> {
     // Base64 is used for safe text storage (avoids null bytes, control chars).
     let salt_vec = base64::engine::general_purpose::STANDARD
         .decode(salt_b64.as_bytes())
-        .map_err(|e| anyhow::anyhow!("Invalid salt encoding: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Invalid salt base64 encoding: {}", e);
+            anyhow::anyhow!("Invalid salt encoding: {}", e)
+        })?;
     
-    // Validate salt length (must be exactly 32 bytes for Argon2id).
-    // Argon2id requires a fixed-size salt for security.
     if salt_vec.len() != 32 {
+        tracing::error!("Invalid salt length: expected 32, got {}", salt_vec.len());
         return Err(anyhow::anyhow!(
             "Invalid salt length: expected 32 bytes, got {}", 
             salt_vec.len()
@@ -282,17 +287,18 @@ fn main() -> anyhow::Result<()> {
     // Argon2id is a memory-hard KDF resistant to GPU/ASIC attacks.
     // Default::default() uses safe parameters (memory, iterations, parallelism).
     let master_key = derive_key(&password, &salt_arr, &Default::default())
-        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        .map_err(|e| {
+            tracing::error!("Key derivation failed: {}", e);
+            anyhow::anyhow!(e.to_string())
+        })?;
 
-    // -----------------------------------------------------------------
-    // Step 5: Open Encrypted Vault Database
-    // -----------------------------------------------------------------
-    // VaultDatabase::open() decrypts the database using the derived key.
-    // If the key is wrong, decryption will fail with an error.
     let db = VaultDatabase::open(cli.vault.to_str().unwrap(), &master_key)
-        .map_err(|e| anyhow::anyhow!(
-            "Failed to open vault: {}. Is the password correct?", e
-        ))?;
+        .map_err(|e| {
+            tracing::error!("Failed to open vault: {}", e);
+            anyhow::anyhow!(
+                "Failed to open vault: {}. Is the password correct?", e
+            )
+        })?;
 
     // -----------------------------------------------------------------
     // Step 6: Execute Requested Command
@@ -300,14 +306,13 @@ fn main() -> anyhow::Result<()> {
     // Pattern match on the command variant to dispatch to handlers.
     // This is the core functionality of the CLI.
     match &cli.command {
-        // -----------------------------------------------------------------
-        // Command: List all credentials
-        // -----------------------------------------------------------------
         Commands::List => {
-            // Retrieve all credentials from the vault.
-            // get_all_credentials() decrypts and returns all entries.
+            tracing::info!("Listing all credentials");
             let creds = db.get_all_credentials()
-                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to list credentials: {}", e);
+                    anyhow::anyhow!(e.to_string())
+                })?;
             
             // Print formatted header row with column titles.
             // {:<20} = left-aligned, 20 characters wide
@@ -323,7 +328,7 @@ fn main() -> anyhow::Result<()> {
                     "{:<20} {:<20} {:<20}", 
                     c.title, 
                     c.username, 
-                    c.url.unwrap_or_default()
+                    c.url.as_deref().unwrap_or("")
                 );
             }
         }
@@ -332,16 +337,19 @@ fn main() -> anyhow::Result<()> {
         // Command: Search credentials
         // -----------------------------------------------------------------
         Commands::Search { query } => {
-            // Search by title or username using partial matching.
+            tracing::info!("Searching credentials for: {}", query);
             let creds = db.search_credentials(query)
-                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                .map_err(|e| {
+                    tracing::error!("Search failed: {}", e);
+                    anyhow::anyhow!(e.to_string())
+                })?;
             
             // Print detailed view for each match.
             for c in creds {
                 println!("--- {} ---", c.title);  // Section header
                 println!("User: {}", c.username);
                 println!("Pass: {}", c.password);
-                if let Some(u) = c.url {  // Only print URL if present
+                if let Some(ref u) = c.url {  // Only print URL if present
                     println!("URL:  {}", u);
                 }
             }
@@ -351,23 +359,22 @@ fn main() -> anyhow::Result<()> {
         // Command: Add new credential
         // -----------------------------------------------------------------
         Commands::Add { title, username } => {
-            // Prompt for the credential password (not the vault master password).
+            tracing::info!("Adding credential: {}", title);
             print!("Enter password for {}: ", title);
             std::io::Write::flush(&mut std::io::stdout())?;
             let cred_password = read_password()?;
             
-            // Create a new Credential struct using the myki_core library.
-            // Credential::new() handles initialization with timestamps, etc.
             let cred = myki_core::Credential::new(
-                title.clone(),    // Clone to transfer ownership
+                title.clone(),
                 username.clone(), 
                 cred_password
             );
             
-            // Encrypt and persist the credential to the vault.
-            // save_credential() handles serialization and encryption.
             db.save_credential(&cred)
-                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to save credential '{}': {}", title, e);
+                    anyhow::anyhow!(e.to_string())
+                })?;
             
             // Confirm success to the user.
             println!("Successfully added {} to vault.", title);

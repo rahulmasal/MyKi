@@ -154,9 +154,12 @@ impl Zeroize for Credential {
     fn zeroize(&mut self) {
         self.password.zeroize();
         self.notes.zeroize();
-        self.title.zeroize();
-        self.username.zeroize();
-        self.url.zeroize();
+    }
+}
+
+impl Drop for Credential {
+    fn drop(&mut self) {
+        self.zeroize();
     }
 }
 

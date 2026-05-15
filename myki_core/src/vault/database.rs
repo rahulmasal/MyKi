@@ -641,7 +641,8 @@ impl VaultDatabase {
             .map_err(|e| VaultError::Decryption(format!("Invalid UTF-8: {}", e)))?;
         let cred: Credential = serde_json::from_str(&json)
             .map_err(|e| VaultError::Decryption(format!("Invalid JSON: {}", e)))?;
-        Ok(cred.password)
+        let password = cred.password.clone();
+        Ok(password)
     }
 
     /// Closes the database connection.

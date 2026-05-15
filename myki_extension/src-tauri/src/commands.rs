@@ -37,15 +37,15 @@ pub struct CredentialDto {
     pub favorite: bool,
 }
 
-impl From<Credential> for CredentialDto {
-    fn from(c: Credential) -> Self {
+impl From<&Credential> for CredentialDto {
+    fn from(c: &Credential) -> Self {
         Self {
-            id: c.id,
-            title: c.title,
-            username: c.username,
-            password: c.password,
-            url: c.url,
-            notes: c.notes,
+            id: c.id.clone(),
+            title: c.title.clone(),
+            username: c.username.clone(),
+            password: c.password.clone(),
+            url: c.url.clone(),
+            notes: c.notes.clone(),
             favorite: c.favorite,
         }
     }
@@ -271,7 +271,7 @@ pub async fn add_credential(
         e.to_string()
     })?;
     tracing::info!("Credential added: {}", title);
-    Ok(CredentialDto::from(cred))
+    Ok(CredentialDto::from(&cred))
 }
 
 #[tauri::command]
