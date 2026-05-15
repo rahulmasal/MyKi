@@ -8,11 +8,12 @@
 <body>
   <div class="container">
     <header>
-      <img src="icons/icon48.png" alt="Myki Logo" class="logo">
       <h1>Myki</h1>
+      <span id="native-status" class="status-dot">Checking...</span>
     </header>
     
     <div id="unlock-view" class="view">
+      <p class="subtitle">Enter your master password to access the desktop vault.</p>
       <input type="password" id="master-password" placeholder="Master Password">
       <button id="unlock-btn">Unlock Vault</button>
     </div>
@@ -22,9 +23,9 @@
         <input type="text" id="search" placeholder="Search accounts...">
       </div>
       <ul id="credential-list">
-        <!-- Credentials will be injected here -->
+        <li class="credential-item empty">No credentials found</li>
       </ul>
-      <button id="lock-btn">Lock Vault</button>
+      <button id="lock-btn" class="btn-secondary">Lock Vault</button>
     </div>
   </div>
   <script src="popup.js"></script>

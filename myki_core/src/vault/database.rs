@@ -31,10 +31,14 @@
 //! 
 //! The database uses a Mutex to ensure thread-safe access to the SQLite connection.
 
-use super::{Credential, VaultError};  // Import types from parent module
-use crate::crypto::{MasterKey, Aes256Gcm, EncryptedData, generate_salt, encode_base64};  // Crypto types
+use super::{Credential, CredentialMeta, VaultError};  // Import types from parent module
+use crate::crypto::{MasterKey, Aes256Gcm, EncryptedData, generate_salt, encode_base64, decode_base64};  // Crypto types
 use rusqlite::{Connection, params};   // SQLite connection and parameterized queries
 use std::sync::Mutex;                 // Thread-safe interior mutability
+
+/// Canary value used to verify the vault key on open.
+const CANARY_KEY: &str = "_canary";
+const CANARY_PLAINTEXT: &[u8] = b"myki_vault_canary_v1";
 
 // ---------------------------------------------------------------------------
 // Vault Database Type
@@ -121,15 +125,16 @@ impl VaultDatabase {
     }
     
     /// Creates a new vault database with an optional pre-generated salt.
-    /// 
+    ///
     /// If `salt` is None, a new random salt is generated and stored.
-    /// 
+    /// Also stores a canary value for vault integrity verification on open.
+    ///
     /// # Parameters
-    /// 
+    ///
     /// * `path`: The file system path where the database will be created.
     /// * `master_key`: The key used to protect the vault.
-    /// * `_salt`: Optional 32-byte salt. Currently unused, reserved for future use.
-    pub fn create_with_salt(path: &str, master_key: &MasterKey, _salt: Option<[u8; 32]>) -> Result<Self, VaultError> {
+    /// * `salt`: Optional 32-byte salt. If None, a new one is generated.
+    pub fn create_with_salt(path: &str, master_key: &MasterKey, salt: Option<[u8; 32]>) -> Result<Self, VaultError> {
         // -----------------------------------------------------------------------
         // Open or create the SQLite database file
         // -----------------------------------------------------------------------
@@ -207,18 +212,29 @@ impl VaultDatabase {
         // -----------------------------------------------------------------------
         // Create the cipher for encryption/decryption
         // -----------------------------------------------------------------------
-        // We use the vault_key (first 32 bytes of derived material)
-        // for AES-256-GCM encryption.
         let cipher = Aes256Gcm::new(&master_key.vault_key);
-        
+
         // -----------------------------------------------------------------------
-        // Store the salt in vault metadata if provided
+        // Store the salt in vault metadata
         // -----------------------------------------------------------------------
-        // The salt must be stored unencrypted so we can retrieve it when
-        // the user wants to unlock the vault. It's not secret, just random.
-        // Note: The caller is responsible for storing the salt via set_meta()
-        // if they want it persisted. create_new() does this automatically.
-        
+        let actual_salt = salt.unwrap_or_else(generate_salt);
+        let salt_b64 = encode_base64(&actual_salt);
+        conn.execute(
+            "INSERT OR REPLACE INTO vault_meta (key, value) VALUES ('salt', ?1)",
+            params![salt_b64],
+        ).map_err(|e| VaultError::Database(format!("Failed to store salt: {}", e)))?;
+
+        // -----------------------------------------------------------------------
+        // Store canary for vault integrity verification
+        // -----------------------------------------------------------------------
+        // Encrypt a known plaintext so we can verify the key on open.
+        let canary_encrypted = cipher.encrypt(CANARY_PLAINTEXT, None)
+            .map_err(|e| VaultError::Encryption(format!("Failed to create canary: {}", e)))?;
+        conn.execute(
+            "INSERT OR REPLACE INTO vault_meta (key, value) VALUES (?1, ?2)",
+            params![CANARY_KEY, canary_encrypted.to_base64()],
+        ).map_err(|e| VaultError::Database(format!("Failed to store canary: {}", e)))?;
+
         Ok(Self {
             conn: Mutex::new(conn),
             cipher,
@@ -248,20 +264,14 @@ impl VaultDatabase {
     pub fn create_new(path: &str, password: &str) -> Result<Self, VaultError> {
         // Generate a random salt
         let salt = generate_salt();
-        
+
         // Derive the key using default Argon2id parameters
         let config = crate::Argon2Config::default();
         let master_key = crate::derive_key(password, &salt, &config)
             .map_err(|e| VaultError::Encryption(e.to_string()))?;
-        
-        // Create the vault (without storing salt yet)
-        let db = Self::create_with_salt(path, &master_key, Some(salt))?;
-        
-        // Store the salt in metadata (required for unlocking later)
-        db.set_meta("salt", &encode_base64(&salt))
-            .map_err(|e| VaultError::Database(format!("Failed to store salt: {}", e)))?;
-        
-        Ok(db)
+
+        // Create the vault — create_with_salt now stores the salt and canary
+        Self::create_with_salt(path, &master_key, Some(salt))
     }
     
     /// Opens an existing vault database file.
@@ -291,14 +301,36 @@ impl VaultDatabase {
         // Open the SQLite database
         let conn = Connection::open(path)
             .map_err(|e| VaultError::Database(format!("Failed to open database: {}", e)))?;
-            
+
         // Enable WAL mode for better read/write concurrency
         conn.pragma_update(None, "journal_mode", "WAL")
             .map_err(|e| VaultError::Database(format!("Failed to enable WAL mode: {}", e)))?;
-        
+
         // Create the cipher with the vault key
         let cipher = Aes256Gcm::new(&master_key.vault_key);
-        
+
+        // -----------------------------------------------------------------------
+        // Verify vault integrity using the canary
+        // -----------------------------------------------------------------------
+        // Read the encrypted canary from vault_meta and attempt to decrypt it.
+        // If decryption fails or the plaintext doesn't match, the key is wrong.
+        let canary_b64: Option<String> = conn.query_row(
+            "SELECT value FROM vault_meta WHERE key = ?1",
+            params![CANARY_KEY],
+            |row| row.get(0),
+        ).ok();
+
+        if let Some(ref b64) = canary_b64 {
+            let encrypted = EncryptedData::from_base64(b64)
+                .map_err(|_| VaultError::Decryption("Corrupted vault canary".to_string()))?;
+            let decrypted = cipher.decrypt(&encrypted, None)
+                .map_err(|_| VaultError::Decryption("Wrong password or corrupted vault".to_string()))?;
+            if decrypted != CANARY_PLAINTEXT {
+                return Err(VaultError::Decryption("Wrong password or corrupted vault".to_string()));
+            }
+        }
+        // If no canary exists (legacy vault), skip verification for backwards compatibility.
+
         Ok(Self {
             conn: Mutex::new(conn),
             cipher,
@@ -566,16 +598,58 @@ impl VaultDatabase {
         }).collect())
     }
     
+    /// Retrieves all credentials as lightweight metadata (no password/notes).
+    ///
+    /// This is the preferred method for list/search views. Passwords are only
+    /// fetched on demand via `get_credential_password()`.
+    pub fn get_all_credential_metas(&self) -> Result<Vec<CredentialMeta>, VaultError> {
+        let all = self.get_all_credentials()?;
+        Ok(all.iter().map(CredentialMeta::from).collect())
+    }
+
+    /// Searches credentials by query and returns metadata only (no password/notes).
+    pub fn search_credential_metas(&self, query: &str) -> Result<Vec<CredentialMeta>, VaultError> {
+        let all = self.get_all_credentials()?;
+        let query_lower = query.to_lowercase();
+        Ok(all.iter()
+            .filter(|c| {
+                c.title.to_lowercase().contains(&query_lower)
+                    || c.username.to_lowercase().contains(&query_lower)
+                    || c.url.as_ref().map(|u| u.to_lowercase().contains(&query_lower)).unwrap_or(false)
+            })
+            .map(CredentialMeta::from)
+            .collect())
+    }
+
+    /// Returns the decrypted password for a single credential by ID.
+    ///
+    /// Use this instead of loading all credentials when only the password is needed.
+    pub fn get_credential_password(&self, id: &str) -> Result<String, VaultError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT data FROM credentials WHERE id = ?1")
+            .map_err(|e| VaultError::Database(format!("Failed to prepare query: {}", e)))?;
+        let combined: String = stmt.query_row(params![id], |row| row.get(0))
+            .map_err(|_| VaultError::NotFound(format!("Credential not found: {}", id)))?;
+        drop(stmt);
+        drop(conn);
+
+        let encrypted = EncryptedData::from_base64(&combined)
+            .map_err(|e| VaultError::Decryption(format!("Invalid encrypted data: {:?}", e)))?;
+        let decrypted = self.cipher.decrypt(&encrypted, None)
+            .map_err(|e| VaultError::Decryption(format!("Decryption failed: {:?}", e)))?;
+        let json = String::from_utf8(decrypted)
+            .map_err(|e| VaultError::Decryption(format!("Invalid UTF-8: {}", e)))?;
+        let cred: Credential = serde_json::from_str(&json)
+            .map_err(|e| VaultError::Decryption(format!("Invalid JSON: {}", e)))?;
+        Ok(cred.password)
+    }
+
     /// Closes the database connection.
-    /// 
+    ///
     /// This is called when the vault is being locked or the application is shutting down.
     /// In Rust, the database is automatically closed when the VaultDatabase is dropped,
     /// but this method allows explicit cleanup.
     pub fn close(self) {
-        // Dropping self will:
-        // 1. Drop the cipher
-        // 2. Drop the Mutex
-        // 3. Drop the Connection (which closes the SQLite file)
         drop(self);
     }
 }

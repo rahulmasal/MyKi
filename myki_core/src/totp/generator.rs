@@ -311,22 +311,17 @@ impl Totp {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64;
-        
-        // Check current period and previous periods (for clock drift tolerance)
-        // We check multiple periods because:
-        // 1. User's device might have slight clock drift
-        // 2. Network latency might delay the request
-        for offset in 0..=tolerance {
-            // Calculate timestamp for this offset
-            let ts = now - (config.period as i64 * offset as i64);
-            
-            // Generate code for this timestamp
+
+        // Check current period, past periods, AND future periods (for clock skew).
+        // Some devices have clocks slightly ahead, so we check both directions.
+        for offset in -(tolerance as i64)..=(tolerance as i64) {
+            let ts = now + (config.period as i64 * offset);
             match Self::generate(secret, config, ts) {
                 Ok(generated) if generated == code => return true,
-                _ => continue,  // Try next offset
+                _ => continue,
             }
         }
-        
+
         false
     }
     

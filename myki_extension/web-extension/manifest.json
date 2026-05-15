@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Myki - P2P Password Manager",
-  "version": "0.1.0",
-  "description": "Secure, zero-knowledge, peer-to-peer password manager for Firefox and Edge.",
+  "version": "0.3.0",
+  "description": "Secure, zero-knowledge, peer-to-peer password manager. Connects to the Myki Desktop vault via native messaging.",
   "permissions": [
     "storage",
     "activeTab",
-    "clipboardWrite"
+    "clipboardWrite",
+    "nativeMessaging"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -17,7 +18,8 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "icons": {
     "16": "icons/icon16.png",

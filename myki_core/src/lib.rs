@@ -90,13 +90,13 @@ pub use totp::{
 // - VaultError: Vault operation errors
 // - VaultDatabase: Encrypted SQLite database
 pub use vault::{
-    Credential,      // Password entry with metadata
-    Identity,        // Personal information entry
-    SecureNote,      // Encrypted text note
-    Folder,          // Organization container
-    TotpSecret,      // TOTP settings linked to credential
-    VaultError,      // Vault operation errors
-    VaultDatabase,   // Encrypted database handle
-    // Also re-export CredentialNew for creating credentials
-    CredentialNew,
+    Credential,       // Password entry with metadata
+    CredentialMeta,   // Password-free credential view for list/search
+    Identity,         // Personal information entry
+    SecureNote,       // Encrypted text note
+    Folder,           // Organization container
+    TotpSecret,       // TOTP settings linked to credential
+    VaultError,       // Vault operation errors
+    VaultDatabase,    // Encrypted database handle
+    CredentialNew,    // For creating new credentials
 };

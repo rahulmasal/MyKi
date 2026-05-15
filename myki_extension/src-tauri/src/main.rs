@@ -60,12 +60,15 @@ fn main() {
             commands::unlock_vault,
             commands::lock_vault,
             commands::is_vault_unlocked,
+            commands::vault_exists,
             commands::add_credential,
             commands::delete_credential,
             commands::search_credentials,
             commands::get_all_credentials,
+            commands::get_credential_password,
             commands::create_vault,
             commands::setup_desktop,
+            commands::get_vault_path,
         ])
         .setup(|app| {
             // Initialize vault on startup

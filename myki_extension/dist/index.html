@@ -9,43 +9,330 @@
 <body>
     <div id="app">
         <header>
-            <img src="../icons/myki-logo.png" alt="Myki" width="48">
-            <h1>Myki Desktop Vault</h1>
+            <svg width="40" height="40" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="512" height="512" rx="120" fill="#0F172A"/>
+                <path d="M256 120L380 190V322L256 392L132 322V190L256 120Z" fill="#1E293B" stroke="#38BDF8" stroke-width="12" stroke-linejoin="round"/>
+                <circle cx="256" cy="256" r="60" stroke="#38BDF8" stroke-width="8" stroke-dasharray="1 15" stroke-linecap="round"/>
+                <rect x="246" y="210" width="20" height="90" rx="10" fill="#F8FAFC"/>
+                <circle cx="256" cy="210" r="30" stroke="#F8FAFC" stroke-width="12" fill="none"/>
+            </svg>
+            <h1 style="flex:1">Myki Desktop</h1>
+            <button id="settings-btn" class="btn-icon" title="Settings">⚙️</button>
         </header>
-        <main id="auth-view">
+
+        <div id="loading-view" class="view">
+            <p>Initializing vault...</p>
+            <p id="init-error" class="error-msg hidden"></p>
+        </div>
+
+        <div id="create-view" class="view hidden">
+            <h2>Create Your Vault</h2>
+            <p>Enter a master password to create a new encrypted vault on this device.</p>
+            <input type="password" id="new-password" placeholder="New Master Password (min 8 chars)">
+            <input type="password" id="confirm-password" placeholder="Confirm Master Password">
+            <p id="create-error" class="error-msg hidden"></p>
+            <button id="create-btn">Create Vault</button>
+        </div>
+
+        <div id="unlock-view" class="view hidden">
             <h2>Unlock Vault</h2>
             <input type="password" id="master-password" placeholder="Master Password">
+            <p id="unlock-error" class="error-msg hidden"></p>
             <button id="unlock-btn">Unlock</button>
-            <p id="error-msg" style="color: red; display: none;">Invalid password</p>
-        </main>
-        <main id="vault-view" style="display: none;">
+        </div>
+
+        <div id="vault-view" class="view hidden">
             <div class="toolbar">
-                <input type="text" id="search" placeholder="Search...">
+                <input type="text" id="search" placeholder="Search credentials...">
                 <button id="add-btn">+ Add</button>
+                <button id="lock-btn" class="btn-secondary">Lock</button>
             </div>
             <ul id="credential-list"></ul>
-        </main>
+        </div>
     </div>
+
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Settings</h2>
+            <div class="settings-section">
+                <label>Vault Location</label>
+                <p id="settings-vault-path" class="mono-path">Loading...</p>
+            </div>
+            <div class="settings-section">
+                <label>Version</label>
+                <p>0.3.0</p>
+            </div>
+            <div class="settings-section">
+                <label>Data</label>
+                <p id="settings-cred-count">Loading...</p>
+            </div>
+            <div class="modal-actions">
+                <button id="close-settings-btn" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Add Credential</h2>
+            <input type="text" id="add-title" placeholder="Title (e.g. GitHub)">
+            <input type="text" id="add-username" placeholder="Username / Email">
+            <div class="password-row">
+                <input type="text" id="add-password" placeholder="Password">
+                <button id="generate-btn" class="btn-small">Generate</button>
+            </div>
+            <input type="text" id="add-url" placeholder="Website URL (optional)">
+            <textarea id="add-notes" placeholder="Notes (optional)"></textarea>
+            <p id="add-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+                <button id="cancel-add-btn" class="btn-secondary">Cancel</button>
+                <button id="save-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const { invoke } = window.__TAURI__.tauri;
-        
-        document.getElementById('unlock-btn').addEventListener('click', async () => {
-            const pwd = document.getElementById('master-password').value;
+        const { invoke } = window.__TAURI__.core;
+
+        let vaultUnlocked = false;
+        let searchTimer = null;
+        const CLIPBOARD_CLEAR_MS = 30000;
+
+        async function init() {
             try {
-                // Assuming 'unlock_vault' command exists or we mock it
-                // await invoke('unlock_vault', { password: pwd });
-                document.getElementById('auth-view').style.display = 'none';
-                document.getElementById('vault-view').style.display = 'block';
+                await invoke('setup_desktop');
+                const exists = await invoke('vault_exists');
+                if (exists) {
+                    showView('unlock-view');
+                } else {
+                    showView('create-view');
+                }
+            } catch (e) {
+                console.error('Init error:', e);
+                document.getElementById('loading-view').innerHTML = '<p style="color:#EF4444">Error: ' + e + '</p>';
+            }
+        }
+
+        function showView(id) {
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+        }
+
+        function hideError(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('create-btn').addEventListener('click', async () => {
+            const pwd = document.getElementById('new-password').value;
+            const confirm = document.getElementById('confirm-password').value;
+            hideError('create-error');
+
+            if (!pwd || pwd.length < 8) {
+                showError('create-error', 'Password must be at least 8 characters.');
+                return;
+            }
+            if (pwd !== confirm) {
+                showError('create-error', 'Passwords do not match.');
+                return;
+            }
+            try {
+                document.getElementById('create-btn').disabled = true;
+                document.getElementById('create-btn').textContent = 'Creating...';
+                await invoke('create_vault', { password: pwd });
+                vaultUnlocked = true;
+                showView('vault-view');
                 loadCredentials();
             } catch (e) {
-                document.getElementById('error-msg').style.display = 'block';
+                showError('create-error', 'Failed to create vault: ' + e);
+            } finally {
+                document.getElementById('create-btn').disabled = false;
+                document.getElementById('create-btn').textContent = 'Create Vault';
             }
         });
 
-        function loadCredentials() {
+        document.getElementById('unlock-btn').addEventListener('click', async () => {
+            const pwd = document.getElementById('master-password').value;
+            hideError('unlock-error');
+            if (!pwd) { showError('unlock-error', 'Please enter your master password.'); return; }
+            try {
+                document.getElementById('unlock-btn').disabled = true;
+                document.getElementById('unlock-btn').textContent = 'Unlocking...';
+                await invoke('unlock_vault', { password: pwd });
+                vaultUnlocked = true;
+                showView('vault-view');
+                loadCredentials();
+            } catch (e) {
+                showError('unlock-error', 'Invalid password or vault error.');
+            } finally {
+                document.getElementById('unlock-btn').disabled = false;
+                document.getElementById('unlock-btn').textContent = 'Unlock';
+            }
+        });
+
+        document.getElementById('lock-btn').addEventListener('click', async () => {
+            await invoke('lock_vault');
+            vaultUnlocked = false;
+            showView('unlock-view');
+            document.getElementById('master-password').value = '';
+        });
+
+        async function loadCredentials(query) {
             const list = document.getElementById('credential-list');
-            list.innerHTML = '<li>No credentials yet (Desktop prototype)</li>';
+            try {
+                const creds = query
+                    ? await invoke('search_credentials', { query })
+                    : await invoke('get_all_credentials');
+                list.innerHTML = '';
+                if (creds.length === 0) {
+                    list.innerHTML = '<li class="empty">No credentials found. Click + Add to add one.</li>';
+                    return;
+                }
+                creds.forEach(c => {
+                    const li = document.createElement('li');
+                    li.className = 'credential-item';
+                    li.innerHTML = `
+                        <div class="item-info">
+                            <strong>${escapeHtml(c.title)}</strong>
+                            <span>${escapeHtml(c.username)}</span>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-icon copy-btn" title="Copy Password">📋</button>
+                            <button class="btn-icon delete-btn" title="Delete">🗑️</button>
+                        </div>
+                    `;
+                    li.querySelector('.copy-btn').addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        try {
+                            const password = await invoke('get_credential_password', { id: c.id });
+                            await navigator.clipboard.writeText(password);
+                            showToast('Password copied');
+                            setTimeout(() => navigator.clipboard.writeText(''), CLIPBOARD_CLEAR_MS);
+                        } catch (err) {
+                            showToast('Failed to copy password');
+                        }
+                    });
+                    li.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (confirm('Delete ' + c.title + '?')) {
+                            invoke('delete_credential', { id: c.id }).then(() => loadCredentials(document.getElementById('search').value));
+                        }
+                    });
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                list.innerHTML = '<li class="empty">Error loading credentials: ' + e + '</li>';
+            }
         }
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => loadCredentials(e.target.value), 300);
+        });
+
+        document.getElementById('settings-btn').addEventListener('click', async () => {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            try {
+                const vaultPath = await invoke('get_vault_path');
+                document.getElementById('settings-vault-path').textContent = vaultPath;
+            } catch (e) {
+                document.getElementById('settings-vault-path').textContent = 'Unknown';
+            }
+            try {
+                const creds = await invoke('get_all_credentials');
+                document.getElementById('settings-cred-count').textContent = creds.length + ' credential(s)';
+            } catch (e) {
+                document.getElementById('settings-cred-count').textContent = vaultUnlocked ? 'Error' : 'Locked';
+            }
+        });
+
+        document.getElementById('close-settings-btn').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.add('hidden');
+        });
+
+        document.getElementById('add-btn').addEventListener('click', () => {
+            document.getElementById('add-modal').classList.remove('hidden');
+            document.getElementById('add-title').value = '';
+            document.getElementById('add-username').value = '';
+            document.getElementById('add-password').value = '';
+            document.getElementById('add-url').value = '';
+            document.getElementById('add-notes').value = '';
+            hideError('add-error');
+        });
+
+        document.getElementById('cancel-add-btn').addEventListener('click', () => {
+            document.getElementById('add-modal').classList.add('hidden');
+        });
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            try {
+                const pwd = await invoke('generate_password', { length: 20 });
+                document.getElementById('add-password').value = pwd;
+            } catch (e) {
+                showError('add-error', 'Failed to generate password');
+            }
+        });
+
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            const title = document.getElementById('add-title').value.trim();
+            const username = document.getElementById('add-username').value.trim();
+            const password = document.getElementById('add-password').value;
+            hideError('add-error');
+
+            if (!title) { showError('add-error', 'Title is required.'); return; }
+            if (!username) { showError('add-error', 'Username is required.'); return; }
+            if (!password) { showError('add-error', 'Password is required.'); return; }
+
+            try {
+                document.getElementById('save-btn').disabled = true;
+                await invoke('add_credential', {
+                    title, username, password,
+                    url: document.getElementById('add-url').value.trim() || null,
+                    notes: document.getElementById('add-notes').value.trim() || null,
+                });
+                document.getElementById('add-modal').classList.add('hidden');
+                loadCredentials(document.getElementById('search').value);
+                showToast('Credential saved');
+            } catch (e) {
+                showError('add-error', 'Failed to save: ' + e);
+            } finally {
+                document.getElementById('save-btn').disabled = false;
+            }
+        });
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const view = document.querySelector('.view:not(.hidden)');
+                if (view) {
+                    if (view.id === 'unlock-view') document.getElementById('unlock-btn').click();
+                    else if (view.id === 'create-view') document.getElementById('create-btn').click();
+                }
+            }
+            if (e.key === 'Escape') {
+                document.getElementById('add-modal').classList.add('hidden');
+            }
+        });
+
+        init();
     </script>
 </body>
 </html>

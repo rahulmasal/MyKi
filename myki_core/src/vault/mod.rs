@@ -41,12 +41,13 @@ pub mod models;    // Data structures
 // Re-export public types for easier access
 pub use database::VaultDatabase;  // Main database handle
 pub use models::{
-    Credential,    // Username/password entry
-    CredentialNew,  // For creating new credentials
-    Identity,      // Personal information
-    SecureNote,    // Encrypted text note
-    Folder,        // Organization container
-    TotpSecret,    // TOTP configuration
+    Credential,       // Username/password entry
+    CredentialMeta,   // Password-free credential view for list/search
+    CredentialNew,    // For creating new credentials
+    Identity,         // Personal information
+    SecureNote,       // Encrypted text note
+    Folder,           // Organization container
+    TotpSecret,       // TOTP configuration
 };
 use thiserror::Error;  // Error handling derive macro
 

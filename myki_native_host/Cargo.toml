@@ -1,0 +1,13 @@
+[package]
+name = "myki_native_host"
+version = "0.1.0"
+edition = "2021"
+description = "Chrome Native Messaging host for Myki vault access"
+
+[dependencies]
+myki_core = { path = "../myki_core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = "0.21"
+rusqlite = { workspace = true }
+rand = { workspace = true }

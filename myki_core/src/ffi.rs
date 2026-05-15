@@ -155,7 +155,7 @@ pub extern "C" fn myki_derive_key(
     // -----------------------------------------------------------------------
     // Derive the key using Argon2id
     // -----------------------------------------------------------------------
-    // Get the default Argon2id configuration (64 MiB memory, 3 iterations, 4 threads)
+    // Get the default Argon2id configuration (128 MiB memory, 3 iterations, 4 threads)
     let config = crate::crypto::Argon2Config::default();
     
     // Call the key derivation function from our crypto module

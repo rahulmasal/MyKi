@@ -41,9 +41,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "clipboard-manager": {
-      "all": true
     }
   }
 }

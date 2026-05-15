@@ -33,6 +33,7 @@
 
 use serde::{Deserialize, Serialize};  // Serialization traits for JSON storage
 use uuid::Uuid;                      // For generating unique IDs
+use zeroize::Zeroize;                // For secure memory cleanup
 
 // ---------------------------------------------------------------------------
 // Credential Model
@@ -147,6 +148,16 @@ pub struct Credential {
     /// Allows attaching files (documents, images, etc.) to credentials.
     /// Files themselves are stored encrypted elsewhere; this just stores references.
     pub attachments: Option<Vec<String>>,
+}
+
+impl Zeroize for Credential {
+    fn zeroize(&mut self) {
+        self.password.zeroize();
+        self.notes.zeroize();
+        self.title.zeroize();
+        self.username.zeroize();
+        self.url.zeroize();
+    }
 }
 
 impl Credential {
@@ -557,7 +568,7 @@ impl TotpSecret {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64;
-        
+
         Self {
             id: Uuid::new_v4().to_string(),
             credential_id: None,
@@ -568,6 +579,35 @@ impl TotpSecret {
             issuer: None,
             created_at: now,
             updated_at: now,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CredentialMeta Model (password-free for list/search)
+// ---------------------------------------------------------------------------
+
+/// A lightweight view of a credential that excludes sensitive fields (password, notes).
+///
+/// Used by list/search operations so that passwords are not eagerly loaded
+/// into memory. Passwords should only be fetched on demand via `get_credential_password()`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CredentialMeta {
+    pub id: String,
+    pub title: String,
+    pub username: String,
+    pub url: Option<String>,
+    pub favorite: bool,
+}
+
+impl From<&Credential> for CredentialMeta {
+    fn from(c: &Credential) -> Self {
+        Self {
+            id: c.id.clone(),
+            title: c.title.clone(),
+            username: c.username.clone(),
+            url: c.url.clone(),
+            favorite: c.favorite,
         }
     }
 }
