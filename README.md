@@ -1,7 +1,7 @@
 # Myki - P2P Password Manager
 
 <p align="center">
-  <img src="myki_app/assets/images/logo.svg" width="200" alt="Myki Logo"/>
+  <img src="myki_extension/src-tauri/icons/myki-logo.png" width="200" alt="Myki Logo"/>
 </p>
 
 <p align="center">
@@ -142,9 +142,30 @@ myki_cli search "github"          # Search credentials
 myki_cli add "GitHub" "user@..." # Add new credential
 ```
 
-### [`myki_extension/`](myki_extension/) - Browser Extension
+### [`myki_extension/`](myki_extension/) - Desktop App & Browser Extension
 
-Tauri-based browser extension for auto-fill functionality.
+Tauri-based desktop application and browser extension.
+
+**Desktop App** (`myki_extension/src-tauri/`) — Full-featured vault management:
+- Create/unlock/lock encrypted vaults
+- Add, search, delete credentials
+- Built-in password generator
+- System tray integration
+- On-demand password fetching (passwords never loaded eagerly)
+- Clipboard auto-clear after 30 seconds
+
+**Browser Extension** (`myki_extension/web-extension/`) — Read-only credential access:
+- View and search credentials
+- Copy passwords on demand via native messaging
+- Connects to the desktop app's vault
+
+### [`myki_native_host/`](myki_native_host/) - Native Messaging Host
+
+Bridge between the browser extension and the local vault. Implements the Chrome Native Messaging protocol to relay commands (unlock, list, search, get_password) to the encrypted SQLite vault.
+
+### [`myki_signaling_server/`](myki_signaling_server/) - WebRTC Signaling Server
+
+WebSocket-based relay for WebRTC peer discovery. Helps Myki devices find each other and exchange signaling messages (SDP offers/answers, ICE candidates) for peer-to-peer sync. Actual sync data flows directly between devices over WebRTC — never through the signaling server.
 
 ---
 
@@ -180,7 +201,7 @@ flowchart LR
 
 **Why GCM?**
 
-- Authenticated Encryption: Confidenciality + Integrity
+- Authenticated Encryption: Confidentiality + Integrity
 - Random nonce: Each encryption is unique
 - Hardware accelerated: Fast on modern CPUs
 
@@ -197,6 +218,24 @@ flowchart TD
 ```
 
 **Important**: The master password is NEVER stored. Only a hash of the derived key is stored for verification.
+
+### Vault Integrity Verification
+
+On creation, the vault stores an encrypted canary value. On every unlock, the canary is decrypted and verified to ensure the correct password was provided. Wrong passwords are rejected immediately with a clear error message.
+
+### On-Demand Password Fetching
+
+Passwords are never eagerly loaded into memory. List and search operations return only metadata (id, title, username, url). The actual password is fetched only when the user explicitly requests it (e.g., clicking "copy").
+
+### Memory Security
+
+- **Zeroize on Drop**: `Credential` structs automatically zero sensitive fields (password, notes) when dropped
+- **Argon2id with 128 MiB**: Memory-hard key derivation resists GPU/ASIC attacks
+- **Key Zeroization**: `VaultKey` and `MacKey` are zeroed on drop via the `zeroize` crate
+
+### Clipboard Security
+
+Both the desktop app and browser extension auto-clear the clipboard 30 seconds after copying a password.
 
 ---
 

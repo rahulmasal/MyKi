@@ -94,7 +94,7 @@ lib/
 │                            ▼                                 │
 │  Layer 3: Data Encryption (Rust Core via FFI)               │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │ • Argon2id KDF (64 MiB, 3 iterations)              │    │
+│  │ • Argon2id KDF (128 MiB, 3 iterations)             │    │
 │  │ • AES-256-GCM (authenticated encryption)            │    │
 │  │ • Encrypted SQLite database                         │    │
 │  └─────────────────────────────────────────────────────┘    │

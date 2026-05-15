@@ -53,7 +53,7 @@ Argon2id is the winner of the Password Hashing Competition and is specifically d
 
 | Parameter     | Value    | Purpose                     |
 | ------------- | -------- | --------------------------- |
-| Memory        | 64 MiB   | Makes GPU attacks expensive |
+| Memory        | 128 MiB  | Makes GPU attacks expensive |
 | Iterations    | 3        | Increases computation time  |
 | Parallelism   | 4        | Utilizes multiple CPU cores |
 | Output Length | 64 bytes | Split into 2×32-byte keys   |
@@ -153,15 +153,23 @@ println!("Current code: {}", code); // e.g., "123456"
 ```rust
 use myki_core::{VaultDatabase, MasterKey};
 
-// Create new vault
-let db = VaultDatabase::create("vault.db", &master_key)?;
+// Create new vault (stores salt + canary automatically)
+let db = VaultDatabase::create_new("vault.db", "my_password")?;
 
 // Save credential
 db.save_credential(&credential)?;
 
-// Retrieve all
-let all_creds = db.get_all_credentials()?;
+// Retrieve metadata only (no passwords)
+let metas = db.get_all_credential_metas()?;
+
+// Fetch password on demand
+let password = db.get_credential_password(&credential_id)?;
+
+// Search by title/username (returns metadata only)
+let results = db.search_credential_metas("github")?;
 ```
+
+**Vault Integrity**: On creation, an encrypted canary is stored. On `open()`, the canary is decrypted and verified — wrong passwords are rejected immediately.
 
 **Database Schema:**
 
@@ -176,13 +184,14 @@ totp_secrets    -- TOTP configurations
 
 #### [`models.rs`](src/vault/models.rs) - Data Structures
 
-| Model        | Description                                        |
-| ------------ | -------------------------------------------------- |
-| `Credential` | Username/password entry with metadata              |
-| `Identity`   | Personal information (name, email, phone, address) |
-| `SecureNote` | Encrypted text note                                |
-| `Folder`     | Organization container                             |
-| `TotpSecret` | TOTP configuration linked to a credential          |
+| Model            | Description                                              |
+| ---------------- | -------------------------------------------------------- |
+| `Credential`     | Username/password entry with metadata (Zeroize on drop)  |
+| `CredentialMeta` | Password-free view for list/search (id, title, username) |
+| `Identity`       | Personal information (name, email, phone, address)       |
+| `SecureNote`     | Encrypted text note                                      |
+| `Folder`         | Organization container                                   |
+| `TotpSecret`     | TOTP configuration linked to a credential                |
 
 ---
 
@@ -261,10 +270,11 @@ cargo test vault
 ## 🔒 Security Considerations
 
 1. **Memory Safety**: Rust prevents buffer overflows, use-after-free, and other memory bugs
-2. **Zeroize**: Sensitive key material is wiped from memory when dropped
-3. **No Dynamic Memory**: Keys stored on stack where possible
-4. **Constant-Time Comparison**: Prevents timing attacks on authentication
-5. **Secure Randomness**: Uses OS CSPRNG for all random generation
+2. **Zeroize on Drop**: `VaultKey`, `MacKey`, and `Credential` automatically zero sensitive data when dropped
+3. **On-Demand Passwords**: `get_all_credential_metas()` returns metadata without passwords; passwords fetched only when needed
+4. **Vault Integrity**: Encrypted canary verifies correct password on every unlock
+5. **Constant-Time Comparison**: Prevents timing attacks on authentication
+6. **Secure Randomness**: Uses OS CSPRNG for all random generation
 
 ---
 
